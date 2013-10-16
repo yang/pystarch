@@ -1,0 +1,3 @@
+Check for consistent return value types, including implicit None at the end
+Check types of class attributes
+Check different types of assignment
