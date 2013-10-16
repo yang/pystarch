@@ -5,6 +5,7 @@ def my_function():
     x = True
     alice = 1
     bob = 2
+    bob = 2 + sam
     globe = 3
     return alice + bob
 
@@ -35,7 +36,9 @@ def another_function():
     alice += 2
     return None
 
-
+a = [1,2,3]
+a[:2]
+c = b * 4
 my_function()
 with open('side_effect', 'w') as f:
     f.write('uh oh')
