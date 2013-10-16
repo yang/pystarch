@@ -1,6 +1,9 @@
 import ast
 
 
+class Any():
+    pass
+
 class Tuple():
     pass
 
@@ -20,9 +23,9 @@ def dump(node):
     if token in ['BoolOp', 'BinOp', 'UnaryOp']:
         return get_token(node.op)
     if token == 'Assign':
-        return node.targets[0].id + ' = ...'
+        return dump(node.targets[0]) + ' = ...'
     if token == 'AugAssign':
-        return node.target.id + ' = ...'
+        return dump(node.target) + ' = ...'
     if token == 'Compare':
         return ' '.join([get_token(op) for op in node.ops])
     return token
@@ -31,6 +34,7 @@ def dump(node):
 def expression_type(node, scope):
     token = get_token(node)
     mapping = {
+        'Any': 'Any',
         'Num': 'Num',
         'Str': 'Str',
         'Tuple': 'Tuple',
@@ -91,11 +95,6 @@ class Visitor(ast.NodeVisitor):
     def expr_type(self, node):
         return expression_type(node, self.scope())
 
-    def new_scope(self, node):
-        self._scopes.append({})
-        self.generic_visit(node)
-        return self._scopes.pop()
-
     def consistent_types(self, root_node, nodes):
         types = [self.expr_type(node) for node in nodes]
         # TODO: make another warning that allows nonetype
@@ -103,8 +102,11 @@ class Visitor(ast.NodeVisitor):
             details = ', '.join(types)
             self.warn('inconsitent-types', root_node, details)
 
-    def check_type(self, node, typename, category):
-        if self.expr_type(node) != typename:
+    def check_type(self, node, typenames, category):
+        if not isinstance(typenames, tuple):
+            typenames = (typenames,)
+        expr_typename = self.expr_type(node)
+        if expr_typename not in typenames + ('Any',):
             self.warn(category, node)
 
     def check_assign(self, node, name, value, allow_reassign=False):
@@ -122,15 +124,24 @@ class Visitor(ast.NodeVisitor):
         self.set_scope(name, new_type)
 
     def visit_Name(self, node):
-        print 'NAME:', node.id
         if node.id not in self.scope():
             self.warn('undefined', node)
 
     def visit_Module(self, node):
-        self.new_scope(node)
+        self._scopes.append({})
+        self.generic_visit(node)
+        self._scopes.pop()
 
     def visit_FunctionDef(self, node):
-        scope = self.new_scope(node)
+        argnames = [arg.id for arg in node.args.args]
+        argscope = {name: 'Any' for name in argnames}
+        if node.args.vararg is not None:
+            argscope[node.args.vararg.id] = 'Tuple'
+        if node.args.kwarg is not None:
+            argscope[node.args.kwarg.id] = 'Dict'
+        self._scopes.append(argscope)
+        self.generic_visit(node)
+        scope = self._scopes.pop()
         self.set_scope(node.name, scope.get('__return__', 'None'))
 
     def visit_Return(self, node):
@@ -142,8 +153,15 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Assign(self, node):
-        for target in node.targets: # TODO: fix this
-            self.check_assign(node, target.id, node.value)
+        for target in node.targets:
+            if get_token(target) in ('Tuple', 'List'):
+                self.check_type(node.value, ('Tuple', 'List'), 'assign-type')
+                if target.elts is not None:
+                    for element in target.elts:
+                        self.check_assign(element, element.id, Any())
+            elif get_token(target) == 'Name':
+                # Any type can be assigned to a name, so no type check
+                self.check_assign(node, target.id, node.value)
         self.generic_visit(node)
 
     def visit_AugAssign(self, node):
@@ -151,8 +169,7 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Compare(self, node):
-        nodes = [node.left] + node.comparators
-        self.consistent_types(node, nodes)
+        self.consistent_types(node, [node.left] + node.comparators)
         self.generic_visit(node)
 
     def visit_BoolOp(self, node):

@@ -1,3 +1,12 @@
-Check for consistent return value types, including implicit None at the end
+http://docs.python.org/2/library/compiler.html
+
+
 Check types of class attributes
-Check different types of assignment
+Check that arguments have acceptable types in visit_Call
+    - watch out for recursion, mutual recursion
+Check for optional decorators to specify function arguments
+Support imports
+Support with
+Check each assignment in AssTuple
+Add types of builtins to initial scope
+Support calling functions that are defined later (needed for mutual recursion)
