@@ -4,7 +4,7 @@ def get_token(node):
     return node.__class__.__name__
 
 
-def expression_type(node, scope):
+def expression_type(node, context):
     token = get_token(node)
     mapping = {
         'Any': 'Any',
@@ -30,16 +30,18 @@ def expression_type(node, scope):
     if token in mapping:
         return mapping[token]
     if token == 'Name':
-        return scope.get(node.id, 'Undefined')
+        return context.get_type(node.id, 'Undefined')
     if token == 'Attribute':
-        return token    # TODO: implement this
+        typename = expression_type(node.value, context)
+        return context.get_attr_type(typename, node.attr)
     if token == 'BoolOp':
-        return expression_type(node.values[-1], scope)
+        return expression_type(node.values[-1], context)
     if token == 'Lambda':
-        return expression_type(node.body)
+        return expression_type(node.body, context)
     if token == 'Yield':
-        return expression_type(node.value)
+        return expression_type(node.value, context)
     if token == 'Call':
-        return scope.get(node.func.id, 'Undefined')  # TODO: needs to be 2 pass
+        # TODO: needs to be 2 pass
+        return context.get_type(node.func.id, 'Undefined')
     raise Exception('evalute_type does not recognize ' + token)
 

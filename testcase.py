@@ -1,6 +1,15 @@
 
 globe = 1
 
+class MyClass(object):
+    class_attr = 1
+    def class_method(self, a):
+        return a
+
+    def another_method(self, b):
+        return 2
+
+
 def my_function(sam, maxi):
     x = True
     alice = 1
@@ -42,5 +51,7 @@ a = [1,2,3]
 a[:2]
 c = b * 4
 my_function()
+instance = MyClass()
+x = instance.class_attr
 with open('side_effect', 'w') as f:
     f.write('uh oh')

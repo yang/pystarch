@@ -1,6 +1,6 @@
 http://docs.python.org/2/library/compiler.html
 
-
+Don't override return type with None, allow other type to override None
 Check types of class attributes
 Check that arguments have acceptable types in visit_Call
     - watch out for recursion, mutual recursion

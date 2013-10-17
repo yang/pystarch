@@ -2,6 +2,7 @@ import ast
 from imports import import_code
 from expr import get_token, expression_type
 from show import show_node
+from context import Context
 
 
 class Any():
@@ -15,10 +16,10 @@ class Visitor(ast.NodeVisitor):
     def __init__(self):
         ast.NodeVisitor.__init__(self)
         self._warnings = []
-        self._scopes = [{'None': 'None', 'True': 'Bool', 'False': 'Bool'}]
+        self._context = Context()
 
-    def getscope(self):
-        return self._scopes[-1]
+    def namespace(self):
+        return self._context.get_top_namespace()
 
     def warnings(self):
         return self._warnings
@@ -26,17 +27,8 @@ class Visitor(ast.NodeVisitor):
     def warn(self, category, node, details=None):
         self._warnings.append((category, show_node(node), node.lineno, details))
 
-    def set_scope(self, name, value):
-        self._scopes[-1][name] = value
-
-    def scope(self):
-        flat_scope = {}
-        for scope in self._scopes:
-           flat_scope.update(scope)
-        return flat_scope
-
     def expr_type(self, node):
-        return expression_type(node, self.scope())
+        return expression_type(node, self._context)
 
     def consistent_types(self, root_node, nodes):
         types = [self.expr_type(node) for node in nodes]
@@ -54,7 +46,7 @@ class Visitor(ast.NodeVisitor):
 
     def check_assign(self, node, name, value, allow_reassign=False):
         new_type = self.expr_type(value)
-        previous_type = self.scope().get(name)
+        previous_type = self._context.get_type(name)
         if previous_type is not None:
             if previous_type != new_type:
                 details = '{0} -> {1}'.format(previous_type, new_type)
@@ -64,42 +56,44 @@ class Visitor(ast.NodeVisitor):
                     self.warn('type-change', node, details)
             if not allow_reassign:
                 self.warn('reassignment', node)
-        self.set_scope(name, new_type)
+        self._context.add_symbol(name, new_type)
 
     def visit_Name(self, node):
-        if node.id not in self.scope():
+        if self._context.get_type(node.id) is None:
             self.warn('undefined', node)
 
     def visit_Module(self, node):
-        self._scopes.append({})
+        self._context.begin_namespace()
         self.generic_visit(node)
 
     def visit_Import(self, node):
         import_visitor = Visitor()
         for alias in node.names:
-            source = import_source(alias.name)
+            name = alias.name
+            source = import_source(name)
             import_visitor.visit(ast.parse(source))
-            scope = import_visitor.getscope()
-            # TODO: add scope to current scope
+            namespace = import_visitor.namespace()
+            self._context.add_symbol(name, name, namespace)
 
-    def visit_Class(self, node):
-        self._scopes.append({})
+    def visit_ClassDef(self, node):
+        self._context.begin_namespace()
         self.generic_visit(node)
-        scope = self._scopes.pop()
-        self.set_scope(node.name, node.name)
-        # TODO: figure this out
+        namespace = self._context.end_namespace()
+        self._context.add_symbol(node.name, node.name, namespace)
 
     def visit_FunctionDef(self, node):
+        self._context.begin_namespace()
         argnames = [arg.id for arg in node.args.args]
-        argscope = {name: 'Any' for name in argnames}
+        for name in argnames:
+            self._context.add_symbol(name, 'Any')
         if node.args.vararg is not None:
-            argscope[node.args.vararg.id] = 'Tuple'
+            self._context.add_symbol(node.args.vararg.id, 'Tuple')
         if node.args.kwarg is not None:
-            argscope[node.args.kwarg.id] = 'Dict'
-        self._scopes.append(argscope)
+            self._context.add_symbol(node.args.kwarg.id, 'Dict')
         self.generic_visit(node)
-        scope = self._scopes.pop()
-        self.set_scope(node.name, scope.get('__return__', 'None'))
+        namespace = self._context.end_namespace()
+        return_type = namespace.get_type('__return__') or 'None'
+        self._context.add_symbol(node.name, return_type)
 
     def visit_Return(self, node):
         self.check_assign(node, '__return__', node.value, allow_reassign=True)
@@ -186,7 +180,8 @@ def main():
         message = filename + ':{2} {0} "{1}"'.format(*warning[:3])
         print message + ' ({0})'.format(warning[3]) if warning[3] else message
 
-    print 'Scope:', visitor.getscope()
+    print 'Namespace:'
+    print visitor.namespace()
 
 
 if __name__ == '__main__':

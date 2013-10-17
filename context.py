@@ -21,38 +21,61 @@
 # typename = scope.getattr(classname, attr) # 
 
 
+def builtin_namespace():
+    namespace = Namespace()
+    namespace.add_symbol('None', 'None')
+    namespace.add_symbol('True', 'Bool')
+    namespace.add_symbol('False', 'Bool')
+    return namespace
+
+
 class Symbol(object):
     def __init__(self, name, typename, subnamespace):
         self.name = name
         self.typename = typename
         self.subnamespace = subnamespace
 
+    def __str__(self):
+        first_line = '{0} {1}'.format(self.typename, self.name)
+        remaining = str(self.subnamespace)
+        if len(remaining) == 0:
+            return first_line
+        indented = '\n'.join([2*' ' + line for line in remaining.splitlines()])
+        return first_line + '\n' + indented
 
-# class MyClass: # name='MyClass', typename='Class', subnamespace=...
+
+# class MyClass: # name='MyClass', typename='MyClass', subnamespace=...
 # m = MyClass()  # name='m', typename='MyClass', subnamespace=None
 # import mymodule # name='mymodule', typename='mymodule', subnamespace=...
 class Namespace(object):
     def __init__(self):
         self.symbols = {}
 
-    def add_symbol(self, name, typename, subnamespace):
-        self.symbols[name] = Symbol(name, typename, subnamespace)
+    def add_symbol(self, name, typename, subnamespace=None):
+        self.symbols[name] = Symbol(name, typename, subnamespace or Namespace())
 
     def remove_symbol(self, name):
         self.symbols.pop(name)
 
-    def get_symbol(self, name):
-        return self.symbols.get(name)
+    def get_symbol(self, name, default=None):
+        return self.symbols.get(name, default)
+
+    def get_type(self, name, default=None):
+        symbol = self.get_symbol(name)
+        return symbol.typename if symbol else default
 
     def __contains__(self, name):
         return name in self.symbols
 
+    def __str__(self):
+        return '\n'.join([str(symbol) for symbol in self.symbols.itervalues()])
+
 
 class Context(object):
     def __init__(self):
-        self.namespace_layers = []
+        self.namespace_layers = [builtin_namespace()]
 
-    def begin_namespace(self)
+    def begin_namespace(self):
         self.namespace_layers.append(Namespace())
 
     def end_namespace(self):
@@ -71,19 +94,19 @@ class Context(object):
                 namespace.remove_symbol(name)
                 return
 
-    def get_symbol(self, name):
+    def get_symbol(self, name, default=None):
         for namespace in reversed(self.namespace_layers):
             if name in namespace:
                 return namespace.get_symbol(name)
-        return None
+        return default
 
-    def get_type(self, name):
+    def get_type(self, name, default=None):
         symbol = self.get_symbol(name)
-        return symbol.typename if symbol else None
+        return symbol.typename if symbol else default
 
     # typename is what is passed after evaluating the type of the
     # expresssion on the left hand side of the period operator
-    def get_attr_type(self, typename, attr):
+    def get_attr_type(self, typename, attr, default=None):
         symbol = self.get_symbol(typename)
-        return symbol.subnamespace.get_type(attr) if symbol else None
+        return symbol.subnamespace.get_type(attr) if symbol else default
 
