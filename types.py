@@ -70,9 +70,16 @@ class Visitor(ast.NodeVisitor):
 
     def argtypes(self, call_node):
         types = []
+        keyword_types = {}
         for arg in call_node.args:
             types.append(self.expr_type(arg))
-        return types
+        for keyword in call_node.keywords:
+            keyword_types[keyword.arg] = self.expr_type(keyword.value)
+        if call_node.starargs is not None:
+            keyword_types['*args'] = self.expr_type(call_node.starargs)
+        if call_node.kwargs is not None:
+            keyword_types['**kwargs'] = self.expr_type(call_node.kwargs)
+        return types, keyword_types
 
     def visit_Name(self, node):
         if self._context.get_type(node.id) is None:
@@ -89,22 +96,25 @@ class Visitor(ast.NodeVisitor):
             source = import_source(name)
             import_visitor.visit(ast.parse(source))
             namespace = import_visitor.namespace()
-            self._context.add_symbol(name, name, namespace)
+            self._context.add_symbol(name, name, None, namespace)
 
     def visit_ClassDef(self, node):
         self._context.begin_namespace()
         self.generic_visit(node)
         namespace = self._context.end_namespace()
-        self._context.add_symbol(node.name, node.name, namespace)
+        # TODO: get __init__ args
+        # TODO: save self.x into namespace where "self" is 1st param to init
+        self._context.add_symbol(node.name, node.name, None, namespace)
 
     def visit_FunctionDef(self, node):
         self._context.begin_namespace()
         argnames = [arg.id for arg in node.args.args]
         argtypes = []
+        kwargtypes = {}
         for decorator in node.decorator_list:
             if get_token(decorator) == 'Call':
                 if show_node(decorator.func) == 'types':
-                    argtypes = self.argtypes(decorator)
+                    argtypes, kwargtypes = self.argtypes(decorator)
         for i, name in enumerate(argnames):
             self._context.add_symbol(name, 'Any')
         if node.args.vararg is not None:
@@ -114,7 +124,10 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
         namespace = self._context.end_namespace()
         return_type = namespace.get_type('__return__') or 'None'
-        self._context.add_symbol(node.name, return_type, None, argtypes)
+        self._context.add_symbol(node.name, return_type, argtypes)
+
+    def visit_Call(self, node):
+        argtypes, kwargtypes = self.argtypes(node)
 
     def visit_Return(self, node):
         self.check_assign_name(node, '__return__', node.value,

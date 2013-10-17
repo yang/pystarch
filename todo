@@ -1,15 +1,24 @@
 http://docs.python.org/2/library/compiler.html
 
+High Priority
+=============
+Add minargs parameter to symbol class or make args class?
 Add types of builtins to initial scope
+Check argument default values for substitute decorators
+
 Support import from and aliases
 Support with
-Implement visit_Delete and actually remove items from scope
 Don't override return type with None, allow other type to override None
 Check that arguments have acceptable types in visit_Call
-    - watch out for recursion, mutual recursion
-Check for optional decorators to specify function arguments
-Check argument default values for substitute decorators
-Check each assignment in AssTuple
+
+
+Medium Priority
+===============
+Implement visit_Delete and actually remove items from scope
 Support calling functions that are defined later (needed for mutual recursion)
-Cache results of imports for speed
+Check each assignment in AssTuple
+
+Low Priority
+============
 Error for "print" outside of main function
+Cache results of imports for speed
