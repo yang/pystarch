@@ -1,4 +1,5 @@
 import ast
+from imports import import_code
 
 
 class Any():
@@ -120,6 +121,9 @@ class Visitor(ast.NodeVisitor):
         self._warnings = []
         self._scopes = [{'None': 'None', 'True': 'Bool', 'False': 'Bool'}]
 
+    def getscope(self):
+        return self._scopes[-1]
+
     def warnings(self):
         return self._warnings
 
@@ -173,19 +177,21 @@ class Visitor(ast.NodeVisitor):
     def visit_Module(self, node):
         self._scopes.append({})
         self.generic_visit(node)
-        self._scopes.pop()
 
     def visit_Import(self, node):
         import_visitor = Visitor()
         for alias in node.names:
+            source = import_source(alias.name)
+            import_visitor.visit(ast.parse(source))
+            scope = import_visitor.getscope()
+            # TODO: add scope to current scope
 
     def visit_Class(self, node):
         self._scopes.append({})
         self.generic_visit(node)
         scope = self._scopes.pop()
-        #self.set_scope(class.name, scope)
-        self.set_scope(class.name, class.name)
-        self.set_subscope(class.name, scope)
+        self.set_scope(node.name, node.name)
+        # TODO: figure this out
 
     def visit_FunctionDef(self, node):
         argnames = [arg.id for arg in node.args.args]
@@ -283,6 +289,8 @@ def main():
     for warning in warnings:
         message = filename + ':{2} {0} "{1}"'.format(*warning[:3])
         print message + ' ({0})'.format(warning[3]) if warning[3] else message
+
+    print 'Scope:', visitor.getscope()
 
 
 if __name__ == '__main__':
