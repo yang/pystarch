@@ -42,6 +42,6 @@ def expression_type(node, context):
         return expression_type(node.value, context)
     if token == 'Call':
         # TODO: needs to be 2 pass
-        return context.get_type(node.func.id, 'Undefined')
+        return expression_type(node.func, context)
     raise Exception('evalute_type does not recognize ' + token)
 

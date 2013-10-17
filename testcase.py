@@ -7,7 +7,7 @@ class MyClass(object):
         return a
 
     def another_method(self, b):
-        return 2
+        return [2]
 
 
 def my_function(sam, maxi):
@@ -53,5 +53,6 @@ c = b * 4
 my_function()
 instance = MyClass()
 x = instance.class_attr
+y = instance.another_method('a')
 with open('side_effect', 'w') as f:
     f.write('uh oh')
