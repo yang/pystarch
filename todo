@@ -1,12 +1,12 @@
 http://docs.python.org/2/library/compiler.html
 
+Support import from and aliases
+Support with
 Don't override return type with None, allow other type to override None
-Check types of class attributes
 Check that arguments have acceptable types in visit_Call
     - watch out for recursion, mutual recursion
 Check for optional decorators to specify function arguments
-Support imports
-Support with
 Check each assignment in AssTuple
 Add types of builtins to initial scope
 Support calling functions that are defined later (needed for mutual recursion)
+Cache results of imports for speed

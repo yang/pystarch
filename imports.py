@@ -1,7 +1,7 @@
 import imp, marshal, dis, meta
 
 
-def import_code(import_name):
+def import_source(import_name):
     # TODO: find_module does not support heirarchical module names
     module_file, module_path, _ = imp.find_module(import_name)
     if module_file is None:

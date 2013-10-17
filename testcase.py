@@ -1,3 +1,4 @@
+import testimport
 
 globe = 1
 
@@ -54,5 +55,7 @@ my_function()
 instance = MyClass()
 x = instance.class_attr
 y = instance.another_method('a')
+
+z = testimport.imported
 with open('side_effect', 'w') as f:
     f.write('uh oh')

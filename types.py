@@ -1,5 +1,5 @@
 import ast
-from imports import import_code
+from imports import import_source
 from expr import get_token, expression_type
 from show import show_node
 from context import Context
