@@ -1,5 +1,7 @@
 import ast
 from imports import import_code
+from expr import get_token, expression_type
+from show import show_node
 
 
 class Any():
@@ -7,112 +9,6 @@ class Any():
 
 class Tuple():
     pass
-
-
-def get_token(node):
-    return node.__class__.__name__
-
-
-def dump(node):
-    token = get_token(node)
-    if token == 'Name':
-        return node.id
-    if token == 'Call':
-        return node.func.id
-    if token == 'Attribute':
-        return '.' + node.attr.id
-    if token in ['BoolOp', 'BinOp', 'UnaryOp']:
-        return get_token(node.op)
-    if token == 'Assign':
-        return dump(node.targets[0]) + ' = ...'
-    if token == 'AugAssign':
-        return dump(node.target) + ' = ...'
-    if token == 'Compare':
-        return ' '.join([get_token(op) for op in node.ops])
-    return token
-
-
-def expression_type(node, scope):
-    token = get_token(node)
-    mapping = {
-        'Any': 'Any',
-        'Num': 'Num',
-        'Str': 'Str',
-        'Tuple': 'Tuple',
-        'List': 'List',
-        'Dict': 'Dict',
-        'Set': 'Set',
-        'Repr': 'Repr',
-        'ListComp': 'List',
-        'SetComp': 'Set',
-        'DictComp': 'Dict',
-        'Not': 'Bool',
-        'BinOp': 'Num',
-        'Invert': 'Num',
-        'UAdd': 'Num',
-        'USub': 'Num',
-        'GeneratorExp': 'Tuple',
-        'Compare': 'Bool',
-        'Subscript': 'List',
-    }
-    if token in mapping:
-        return mapping[token]
-    if token == 'Name':
-        return scope.get(node.id, 'Undefined')
-    if token == 'Attribute':
-        return token    # TODO: implement this
-    if token == 'BoolOp':
-        return expression_type(node.values[-1], scope)
-    if token == 'Lambda':
-        return expression_type(node.body)
-    if token == 'Yield':
-        return expression_type(node.value)
-    if token == 'Call':
-        return scope.get(node.func.id, 'Undefined')  # TODO: needs to be 2 pass
-    raise Exception('evalute_type does not recognize ' + token)
-
-
-# Tricky: need to support obj1.obj2.x where obj2 is an instance
-# of a class that may not be defined in the current scope
-# Idea: maintain a separate scope dict that contains all the class
-# type data, keyed by classname
-# Assume that all attributes are either set in __init__ or method names
-
-# Also, if we import one function from another module, and that function
-# calls another function that was not imported, we need to know the type
-# of the other function without having it in our scope. Perhaps we should
-# maintain two scopes. One for everything that is loaded, another for
-# everything that is in scope. LoadScope vs. NameScope
-# Whenever you add to LoadScope, it automatically adds to NameScope,
-# but not the other way around.
-
-# import statement creates a whole new scope heirarchy, not just a new level
-
-# type check Attribute(expr, attr):
-# classname = expr_type(expr)
-# typename = scope.getattr(classname, attr) # 
-class Namespace(object):
-    def __init__(self):
-        self._levels = []
-
-    def add_name(self, name, typename):
-        self._levels[-1][name] = typename
-
-    def gettype(self, name):
-        for level in reversed(self._levels):
-            if name in level:
-                return level[name]
-        return None
-
-    def getattr(self, classname, attr, default=None):
-        pass
-
-    def push_scope(self, scope={}):
-        self._levels.append(scope)
-
-    def pop_scope(self):
-        return self._levels.pop()
-
 
 
 class Visitor(ast.NodeVisitor):
@@ -128,7 +24,7 @@ class Visitor(ast.NodeVisitor):
         return self._warnings
 
     def warn(self, category, node, details=None):
-        self._warnings.append((category, dump(node), node.lineno, details))
+        self._warnings.append((category, show_node(node), node.lineno, details))
 
     def set_scope(self, name, value):
         self._scopes[-1][name] = value
