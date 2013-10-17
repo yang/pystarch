@@ -68,6 +68,12 @@ class Visitor(ast.NodeVisitor):
             # Any type can be assigned to a name, so no type check
             self.check_assign_name(node, target.id, value)
 
+    def argtypes(self, call_node):
+        types = []
+        for arg in call_node.args:
+            types.append(self.expr_type(arg))
+        return types
+
     def visit_Name(self, node):
         if self._context.get_type(node.id) is None:
             self.warn('undefined', node)
@@ -94,16 +100,21 @@ class Visitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         self._context.begin_namespace()
         argnames = [arg.id for arg in node.args.args]
-        for name in argnames:
+        argtypes = []
+        for decorator in node.decorator_list:
+            if get_token(decorator) == 'Call':
+                if show_node(decorator.func) == 'types':
+                    argtypes = self.argtypes(decorator)
+        for i, name in enumerate(argnames):
             self._context.add_symbol(name, 'Any')
         if node.args.vararg is not None:
-            self._context.add_symbol(node.args.vararg.id, 'Tuple')
+            self._context.add_symbol(node.args.vararg, 'Tuple')
         if node.args.kwarg is not None:
-            self._context.add_symbol(node.args.kwarg.id, 'Dict')
+            self._context.add_symbol(node.args.kwarg, 'Dict')
         self.generic_visit(node)
         namespace = self._context.end_namespace()
         return_type = namespace.get_type('__return__') or 'None'
-        self._context.add_symbol(node.name, return_type)
+        self._context.add_symbol(node.name, return_type, None, argtypes)
 
     def visit_Return(self, node):
         self.check_assign_name(node, '__return__', node.value,

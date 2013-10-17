@@ -26,17 +26,23 @@ def builtin_namespace():
     namespace.add_symbol('None', 'None')
     namespace.add_symbol('True', 'Bool')
     namespace.add_symbol('False', 'Bool')
+    namespace.add_symbol('int', 'Num')
+    namespace.add_symbol('float', 'Num')
+    namespace.add_symbol('str', 'Str')
     return namespace
 
 
 class Symbol(object):
-    def __init__(self, name, typename, subnamespace):
+    def __init__(self, name, typename, subnamespace, argtypes):
         self.name = name
         self.typename = typename
         self.subnamespace = subnamespace
+        self.argtypes = argtypes
 
     def __str__(self):
         first_line = '{0} {1}'.format(self.typename, self.name)
+        if self.argtypes is not None:
+            first_line += '({0})'.format(', '.join(self.argtypes))
         remaining = str(self.subnamespace)
         if len(remaining) == 0:
             return first_line
@@ -51,8 +57,9 @@ class Namespace(object):
     def __init__(self):
         self.symbols = {}
 
-    def add_symbol(self, name, typename, subnamespace=None):
-        self.symbols[name] = Symbol(name, typename, subnamespace or Namespace())
+    def add_symbol(self, name, typename, subnamespace=None, argtypes=None):
+        self.symbols[name] = Symbol(name, typename,
+            subnamespace or Namespace(), argtypes)
 
     def remove_symbol(self, name):
         self.symbols.pop(name)
@@ -84,9 +91,10 @@ class Context(object):
     def get_top_namespace(self):
         return self.namespace_layers[-1]
 
-    def add_symbol(self, name, typename, subnamespace=None):
+    def add_symbol(self, name, typename, subnamespace=None, argtypes=None):
         namespace = subnamespace or Namespace()
-        return self.get_top_namespace().add_symbol(name, typename, namespace)
+        return self.get_top_namespace().add_symbol(name, typename,
+            namespace, argtypes)
 
     def remove_symbol(self, name):
         for namespace in reversed(self.namespace_layers):

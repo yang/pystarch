@@ -2,6 +2,9 @@ import testimport
 
 globe = 1
 
+def types(*args, **kwargs):
+    return lambda x: x
+
 class MyClass(object):
     class_attr = 1
     def class_method(self, a):
@@ -11,6 +14,7 @@ class MyClass(object):
         return [2]
 
 
+@types(int, str)
 def my_function(sam, maxi):
     x = True
     alice = 1

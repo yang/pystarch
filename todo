@@ -1,5 +1,6 @@
 http://docs.python.org/2/library/compiler.html
 
+Add types of builtins to initial scope
 Support import from and aliases
 Support with
 Implement visit_Delete and actually remove items from scope
@@ -7,7 +8,8 @@ Don't override return type with None, allow other type to override None
 Check that arguments have acceptable types in visit_Call
     - watch out for recursion, mutual recursion
 Check for optional decorators to specify function arguments
+Check argument default values for substitute decorators
 Check each assignment in AssTuple
-Add types of builtins to initial scope
 Support calling functions that are defined later (needed for mutual recursion)
 Cache results of imports for speed
+Error for "print" outside of main function
