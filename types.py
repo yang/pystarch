@@ -44,7 +44,7 @@ class Visitor(ast.NodeVisitor):
         if expr_typename not in typenames + ('Any',):
             self.warn(category, node)
 
-    def check_assign(self, node, name, value, allow_reassign=False):
+    def check_assign_name(self, node, name, value, allow_reassign=False):
         new_type = self.expr_type(value)
         previous_type = self._context.get_type(name)
         if previous_type is not None:
@@ -57,6 +57,16 @@ class Visitor(ast.NodeVisitor):
             if not allow_reassign:
                 self.warn('reassignment', node)
         self._context.add_symbol(name, new_type)
+
+    def check_assign(self, node, target, value):
+        if get_token(target) in ('Tuple', 'List'):
+            self.check_type(value, ('Tuple', 'List'), 'assign-type')
+            if target.elts is not None:
+                for element in target.elts:
+                    self.check_assign_name(element, element.id, Any())
+        elif get_token(target) == 'Name':
+            # Any type can be assigned to a name, so no type check
+            self.check_assign_name(node, target.id, value)
 
     def visit_Name(self, node):
         if self._context.get_type(node.id) is None:
@@ -96,27 +106,22 @@ class Visitor(ast.NodeVisitor):
         self._context.add_symbol(node.name, return_type)
 
     def visit_Return(self, node):
-        self.check_assign(node, '__return__', node.value, allow_reassign=True)
+        self.check_assign_name(node, '__return__', node.value,
+            allow_reassign=True)
         self.generic_visit(node)
 
     def visit_Yield(self, node):
-        self.check_assign(node, '__return__', Tuple(), allow_reassign=True)
+        self.check_assign_name(node, '__return__', Tuple(),
+            allow_reassign=True)
         self.generic_visit(node)
 
     def visit_Assign(self, node):
         for target in node.targets:
-            if get_token(target) in ('Tuple', 'List'):
-                self.check_type(node.value, ('Tuple', 'List'), 'assign-type')
-                if target.elts is not None:
-                    for element in target.elts:
-                        self.check_assign(element, element.id, Any())
-            elif get_token(target) == 'Name':
-                # Any type can be assigned to a name, so no type check
-                self.check_assign(node, target.id, node.value)
+            self.check_assign(node, target, node.value)
         self.generic_visit(node)
 
     def visit_AugAssign(self, node):
-        self.check_assign(node, node.target.id, node.value)
+        self.check_assign_name(node, node.target.id, node.value)
         self.generic_visit(node)
 
     def visit_Compare(self, node):
@@ -167,6 +172,13 @@ class Visitor(ast.NodeVisitor):
         self.consistent_types([node.body, node.orelse], 'if-else')
         self.generic_visit(node)
 
+    def visit_For(self, node):
+        # Python doesn't create a namespace for "for", but we will 
+        # treat it as if it did
+        self._context.begin_namespace()
+        self.check_assign(node, node.target, Any())
+        self.generic_visit(node)
+        self._context.end_namespace()
 
 def main():
     filename = 'testcase.py'

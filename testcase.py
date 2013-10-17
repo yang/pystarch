@@ -56,6 +56,11 @@ instance = MyClass()
 x = instance.class_attr
 y = instance.another_method('a')
 
+
+for i in (1,2,3):
+    i += 1
+
+
 z = testimport.imported
 with open('side_effect', 'w') as f:
     f.write('uh oh')
