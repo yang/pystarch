@@ -231,14 +231,16 @@ def analyze(source, filepath=None):
 
 
 def analysis(source, filepath=None):
-    return '\n'.join([str(warning) for warning in analyze(source, filepath)])
+    warnings = analyze(source, filepath)
+    return ''.join([str(warning) + '\n' for warning in warnings])
 
 
 def main():
     filepath = sys.argv[1]
     with open(filepath) as source_file:
         source = source_file.read()
-    print(analysis(source, filepath))
+    output = analysis(source, filepath)
+    sys.stdout.write(analysis(source, filepath))
 
 
 if __name__ == '__main__':
