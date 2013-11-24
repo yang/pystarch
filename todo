@@ -2,21 +2,19 @@ http://docs.python.org/2/library/compiler.html
 
 High Priority
 =============
-Add types of builtins to initial scope
+Process self.x into object namespace
 Support import from and aliases
 Fix BinOp: allow multiplication of string with integer,
     addition of strings, lists, tuples
 Support heirarchical module names in import
+Fix Compare: in, not in
+Check that __init__ takes at least one argument
 
-
-
-Medium Priority
-===============
-Implement visit_Delete and actually remove items from scope
+Add types of builtins to initial scope
 Support calling functions that are defined later (needed for mutual recursion)
 Check each assignment in AssTuple
 
 Low Priority
 ============
-Error for "print" outside of main function
+Implement visit_Delete and actually remove items from scope
 Cache results of imports for speed

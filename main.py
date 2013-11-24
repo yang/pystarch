@@ -31,7 +31,7 @@ class NodeWarning(object):
 # minargs is the minimum number of positional arguments that must be passed
 class Arguments(object):
     def __init__(self, args, vararg_name, kwarg_name, minargs):
-        self._args = args
+        self.args = args
         self.argnames = [arg[0] for arg in args]
         self.argtypes = [arg[1] for arg in args]
         self.kwargtypes = {arg[0]: arg[1] for arg in args if arg[1]}
@@ -44,8 +44,18 @@ class Arguments(object):
             if self.vararg_name else '')
         kwarg = (', {0}: Dict'.format(self.kwarg_name)
             if self.kwarg_name else '')
-        return (', '.join(arg[0] + ': ' + arg[1] for arg in self._args)
+        return (', '.join(arg[0] + ': ' + arg[1] for arg in self.args)
             + vararg + kwarg)
+
+
+class ClassArguments(Arguments):
+    def __init__(self, arguments):
+        args = arguments.args[1:] if len(arguments.args) > 0 else []
+        vararg_name = arguments.vararg_name
+        kwarg_name = arguments.kwarg_name
+        minargs = arguments.minargs
+        super(ClassArguments, self).__init__(args, vararg_name,
+            kwarg_name, minargs)
 
 
 class Visitor(ast.NodeVisitor):
@@ -150,9 +160,10 @@ class Visitor(ast.NodeVisitor):
         self.begin_namespace()
         self.generic_visit(node)
         namespace = self.end_namespace()
-        # TODO: get __init__ args
+        init_arguments = namespace.get_symbol('__init__').arguments
+        arguments = ClassArguments(init_arguments)
         # TODO: save self.x into namespace where "self" is 1st param to init
-        self._context.add_symbol(node.name, node.name, None, namespace)
+        self._context.add_symbol(node.name, node.name, arguments, namespace)
 
     def visit_FunctionDef(self, node):
         self.begin_namespace()
@@ -251,6 +262,7 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Delete(self, node):
+        # TODO: need to support identifiers, dict items, attributes, list items
         names = [target.id for target in node.targets]
         self.warn('delete', node)
         self.generic_visit(node)
@@ -312,7 +324,7 @@ def analyze(source, filepath=None):
     tree = ast.parse(source, filepath)
     visitor = Visitor(filepath)
     visitor.visit(tree)
-    #print(visitor.namespace())
+    print(visitor.namespace())
     return visitor.warnings()
 
 
