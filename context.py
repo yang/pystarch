@@ -39,16 +39,16 @@ def builtin_namespace():
 
 
 class Symbol(object):
-    def __init__(self, name, typename, argtypes, subnamespace):
+    def __init__(self, name, typename, arguments, subnamespace):
         self.name = name
         self.typename = typename
         self.subnamespace = subnamespace
-        self.argtypes = argtypes
+        self.arguments = arguments
 
     def __str__(self):
         first_line = '{0} {1}'.format(self.typename, self.name)
-        if self.argtypes is not None:
-            first_line += '({0})'.format(', '.join(self.argtypes))
+        if self.arguments is not None:
+            first_line += '({0})'.format(self.arguments)
         remaining = str(self.subnamespace)
         if len(remaining) == 0:
             return first_line
@@ -63,8 +63,8 @@ class Namespace(object):
     def __init__(self):
         self.symbols = {}
 
-    def add_symbol(self, name, typename, argtypes=None, subnamespace=None):
-        self.symbols[name] = Symbol(name, typename, argtypes,
+    def add_symbol(self, name, typename, arguments=None, subnamespace=None):
+        self.symbols[name] = Symbol(name, typename, arguments,
             subnamespace or Namespace())
 
     def remove_symbol(self, name):
@@ -97,10 +97,10 @@ class Context(object):
     def get_top_namespace(self):
         return self.namespace_layers[-1]
 
-    def add_symbol(self, name, typename, argtypes=None, subnamespace=None):
+    def add_symbol(self, name, typename, arguments=None, subnamespace=None):
         namespace = subnamespace or Namespace()
         return self.get_top_namespace().add_symbol(name, typename,
-            argtypes, namespace)
+            arguments, namespace)
 
     def remove_symbol(self, name):
         for namespace in reversed(self.namespace_layers):

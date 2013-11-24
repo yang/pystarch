@@ -27,6 +27,26 @@ class NodeWarning(object):
             self.category, show_node(self.node), extra)
 
 
+# args parameter is a list of 2-tuples of the form (name, typename)
+# minargs is the minimum number of positional arguments that must be passed
+class Arguments(object):
+    def __init__(self, args, vararg_name, kwarg_name, minargs):
+        self._args = args
+        self.argtypes = [arg[1] for arg in args]
+        self.kwargtypes = {arg[0]: arg[1] for arg in args if arg[1]}
+        self.vararg_name = vararg_name
+        self.kwarg_name = kwarg_name
+        self.minargs = minargs
+
+    def __str__(self):
+        vararg = (', {0}: Tuple'.format(self.vararg_name)
+            if self.vararg_name else '')
+        kwarg = (', {0}: Dict'.format(self.kwarg_name)
+            if self.kwarg_name else '')
+        return (', '.join(arg[0] + ': ' + arg[1] for arg in self._args)
+            + vararg + kwarg)
+
+
 class Visitor(ast.NodeVisitor):
     def __init__(self, filepath):
         ast.NodeVisitor.__init__(self)
@@ -133,13 +153,17 @@ class Visitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         self.begin_namespace()
         argnames = [arg.id for arg in node.args.args]
-        argtypes = []
-        kwargtypes = {}
+        minargs = len(node.args.args) - len(node.args.defaults)
+        argtypes = (['Any'] * minargs) + [self.expr_type(d) for d in
+            node.args.defaults]
+        arguments = Arguments(zip(argnames, argtypes), node.args.vararg,
+            node.args.kwarg, minargs)
         for decorator in node.decorator_list:
             if get_token(decorator) == 'Call':
                 if show_node(decorator.func) == 'types':
                     argtypes, kwargtypes = self.argtypes(decorator)
         for i, name in enumerate(argnames):
+            # TODO: add support for Python3 annotations here
             self._context.add_symbol(name, 'Any')
         if node.args.vararg is not None:
             self._context.add_symbol(node.args.vararg, 'Tuple')
@@ -148,7 +172,7 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
         namespace = self.end_namespace()
         return_type = namespace.get_type('__return__') or 'None'
-        self._context.add_symbol(node.name, return_type, argtypes)
+        self._context.add_symbol(node.name, return_type, arguments)
 
     def visit_Call(self, node):
         argtypes, kwargtypes = self.argtypes(node)
@@ -242,6 +266,7 @@ def analyze(source, filepath=None):
     tree = ast.parse(source, filepath)
     visitor = Visitor(filepath)
     visitor.visit(tree)
+    print(visitor.namespace())
     return visitor.warnings()
 
 

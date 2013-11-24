@@ -3,11 +3,15 @@ http://docs.python.org/2/library/compiler.html
 High Priority
 =============
 Add minargs parameter to symbol class or make args class?
+    - The Symbol class needs to be capable of storing a type for
+        each parameter in a list of parameters and the minimum number
+        of required parameters, it needs to remember the names for
+        each type in case it is specified as a keyword argument
+        arguments: [(name, type)], minargs
 Add types of builtins to initial scope
 Check argument default values for substitute decorators
 
 Support import from and aliases
-Support with
 Don't override return type with None, allow other type to override None
 Check that arguments have acceptable types in visit_Call
 
