@@ -195,7 +195,7 @@ class Visitor(ast.NodeVisitor):
         if not symbol:
             return self.warn('undefined-function', node, node.func.id)
         if not symbol.arguments:
-            return self.warn('not-a-function', node, node.func)
+            return self.warn('not-a-function', node, node.func.id)
         argtypes, kwargtypes = self.argtypes(node)
         # make sure all required arguments are specified
         minargs = symbol.arguments.minargs
@@ -312,7 +312,7 @@ def analyze(source, filepath=None):
     tree = ast.parse(source, filepath)
     visitor = Visitor(filepath)
     visitor.visit(tree)
-    print(visitor.namespace())
+    #print(visitor.namespace())
     return visitor.warnings()
 
 

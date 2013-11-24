@@ -4,6 +4,10 @@ High Priority
 =============
 Add types of builtins to initial scope
 Support import from and aliases
+Fix BinOp: allow multiplication of string with integer,
+    addition of strings, lists, tuples
+Support heirarchical module names in import
+
 
 
 Medium Priority

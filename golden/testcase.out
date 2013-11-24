@@ -3,7 +3,11 @@ testcases/testcase.py:6 undefined "x"
 testcases/testcase.py:8 undefined "object"
 testcases/testcase.py:22 reassignment "bob = ..."
 testcases/testcase.py:23 reassignment "globe = ..."
+testcases/testcase.py:28 missing-argument "my_function" (sam)
+testcases/testcase.py:28 missing-argument "my_function" (maxi)
 testcases/testcase.py:30 inconsitent-types "Eq" (Str, Num)
+testcases/testcase.py:30 missing-argument "my_function" (sam)
+testcases/testcase.py:30 missing-argument "my_function" (maxi)
 testcases/testcase.py:37 type-change "alice = ..." (Num -> Str)
 testcases/testcase.py:37 reassignment "alice = ..."
 testcases/testcase.py:38 type-change "Return" (List -> Str)
@@ -21,5 +25,9 @@ testcases/testcase.py:55 type-change "a = ..." (Any -> List)
 testcases/testcase.py:55 reassignment "a = ..."
 testcases/testcase.py:57 type-change "c = ..." (Any -> Num)
 testcases/testcase.py:57 reassignment "c = ..."
+testcases/testcase.py:58 missing-argument "my_function" (sam)
+testcases/testcase.py:58 missing-argument "my_function" (maxi)
+testcases/testcase.py:59 not-a-function "MyClass" (MyClass)
 testcases/testcase.py:65 type-change "i = ..." (Any -> Num)
 testcases/testcase.py:65 reassignment "i = ..."
+testcases/testcase.py:69 undefined-function "open" (open)
