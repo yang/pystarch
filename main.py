@@ -32,6 +32,7 @@ class NodeWarning(object):
 class Arguments(object):
     def __init__(self, args, vararg_name, kwarg_name, minargs):
         self._args = args
+        self.argnames = [arg[0] for arg in args]
         self.argtypes = [arg[1] for arg in args]
         self.kwargtypes = {arg[0]: arg[1] for arg in args if arg[1]}
         self.vararg_name = vararg_name
@@ -193,9 +194,16 @@ class Visitor(ast.NodeVisitor):
         if not symbol.arguments:
             return self.warn('not-a-function', node, node.func)
         argtypes, kwargtypes = self.argtypes(node)
-        if len(argtypes) > len(symbol.arguments.argtypes):
-            return self.warn('too-many-arguments', node)
-        for i, argtype in enumerate(argtypes):
+        # make sure all required arguments are specified
+        minargs = symbol.arguments.minargs
+        required_kwargs = symbol.arguments.argnames[len(argtypes):minargs]
+        missing = [name for name in required_kwargs if name not in kwargtypes]
+        for missing_argument in missing:
+            self.warn('missing-argument', node, missing_argument)
+        if symbol.arguments.vararg_name is None:
+            if len(argtypes) > len(symbol.arguments.argtypes):
+                self.warn('too-many-arguments', node)
+        for i, argtype in enumerate(argtypes[:len(symbol.arguments.argtypes)]):
             deftype = symbol.arguments.argtypes[i]
             self.check_argument_type(node, i + 1, argtype, [deftype])
         for name, kwargtype in kwargtypes.items():
@@ -300,7 +308,7 @@ def analyze(source, filepath=None):
     tree = ast.parse(source, filepath)
     visitor = Visitor(filepath)
     visitor.visit(tree)
-    print(visitor.namespace())
+    #print(visitor.namespace())
     return visitor.warnings()
 
 

@@ -1,0 +1,7 @@
+testcases/func.py:7 missing-argument "f" (a)
+testcases/func.py:7 missing-argument "f" (b)
+testcases/func.py:7 missing-argument "f" (c)
+testcases/func.py:8 missing-argument "f" (c)
+testcases/func.py:10 missing-argument "f" (c)
+testcases/func.py:10 extra-keyword "f" (p)
+testcases/func.py:13 type-error "f" (Argument e expected type Str but got Num)
