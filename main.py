@@ -88,7 +88,8 @@ class Visitor(ast.NodeVisitor):
         if expr_typename not in typenames + ('Any',):
             self.warn(category, node)
 
-    def check_assign_name(self, node, name, value, allow_reassign=False):
+    def check_assign_name(self, node, name, value, allow_reassign=False,
+            allow_none_conversion=False):
         new_type = self.expr_type(value)
         previous_type = self._context.get_type(name)
         if previous_type is not None:
@@ -100,6 +101,8 @@ class Visitor(ast.NodeVisitor):
                     self.warn('type-change', node, details)
             if not allow_reassign:
                 self.warn('reassignment', node)
+            if allow_none_conversion and new_type == 'None':
+                return      # don't override non-none with none
         self._context.add_symbol(name, new_type)
 
     def check_assign(self, node, target, value):
@@ -218,15 +221,16 @@ class Visitor(ast.NodeVisitor):
                     self.warn('extra-keyword', node, name)
                 else:
                     self.check_argument_type(node, name, kwargtype, [deftype])
+        self.generic_visit(node)
 
     def visit_Return(self, node):
         self.check_assign_name(node, '__return__', node.value,
-            allow_reassign=True)
+            allow_reassign=True, allow_none_conversion=True)
         self.generic_visit(node)
 
     def visit_Yield(self, node):
         self.check_assign_name(node, '__return__', Tuple(),
-            allow_reassign=True)
+            allow_reassign=True, allow_none_conversion=True)
         self.generic_visit(node)
 
     def visit_Assign(self, node):
@@ -308,7 +312,7 @@ def analyze(source, filepath=None):
     tree = ast.parse(source, filepath)
     visitor = Visitor(filepath)
     visitor.visit(tree)
-    #print(visitor.namespace())
+    print(visitor.namespace())
     return visitor.warnings()
 
 
