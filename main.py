@@ -174,8 +174,42 @@ class Visitor(ast.NodeVisitor):
         return_type = namespace.get_type('__return__') or 'None'
         self._context.add_symbol(node.name, return_type, arguments)
 
+    def type_error(self, node, label, got, expected):
+        template = '{0} expected type {1} but got {2}'
+        details = template.format(label, ' or '.join(expected), got)
+        self.warn('type-error', node, details)
+
+    def check_argument_type(self, node, label, got, expected):
+        assert isinstance(expected, list)
+        if 'Any' not in expected and got not in expected + ['None']:
+            self.type_error(node, 'Argument ' + label, got, expected)
+
     def visit_Call(self, node):
+        if not hasattr(node.func, 'id'):
+            return      # TODO: support class attributes
+        symbol = self._context.get_symbol(node.func.id)
+        if not symbol:
+            return self.warn('undefined-function', node, node.func.id)
+        if not symbol.arguments:
+            return self.warn('not-a-function', node, node.func)
         argtypes, kwargtypes = self.argtypes(node)
+        if len(argtypes) > len(symbol.arguments.argtypes):
+            return self.warn('too-many-arguments', node)
+        for i, argtype in enumerate(argtypes):
+            deftype = symbol.arguments.argtypes[i]
+            self.check_argument_type(node, i + 1, argtype, [deftype])
+        for name, kwargtype in kwargtypes.items():
+            if name == '*args' and kwargtype not in ['Tuple', 'List']:
+                self.check_argument_type(node, name, kwargtype,
+                    ['Tuple', 'List'])
+            elif name == '**kwargs':
+                self.check_argument_type(node, name, kwargtype, ['Dict'])
+            else:
+                deftype = symbol.arguments.kwargtypes.get(name)
+                if deftype is None:
+                    self.warn('extra-keyword', node, name)
+                else:
+                    self.check_argument_type(node, name, kwargtype, [deftype])
 
     def visit_Return(self, node):
         self.check_assign_name(node, '__return__', node.value,
