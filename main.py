@@ -1,3 +1,5 @@
+import sys
+import os
 import ast
 from imports import import_source
 from expr import get_token, expression_type
@@ -12,9 +14,23 @@ class Tuple():
     pass
 
 
+class NodeWarning(object):
+    def __init__(self, filepath, category, node, details=None):
+        self.filepath = filepath
+        self.category = category
+        self.node = node
+        self.details = details
+
+    def __str__(self):
+        extra = ' ({0})'.format(self.details) if self.details else ''
+        return self.filepath + ':{0} {1} "{2}"{3}'.format(self.node.lineno,
+            self.category, show_node(self.node), extra)
+
+
 class Visitor(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, filepath):
         ast.NodeVisitor.__init__(self)
+        self._filepath = filepath
         self._warnings = []
         self._context = Context()
 
@@ -25,7 +41,8 @@ class Visitor(ast.NodeVisitor):
         return self._warnings
 
     def warn(self, category, node, details=None):
-        self._warnings.append((category, show_node(node), node.lineno, details))
+        warning = NodeWarning(self._filepath, category, node, details)
+        self._warnings.append(warning)
 
     def expr_type(self, node):
         return expression_type(node, self._context)
@@ -90,10 +107,11 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Import(self, node):
-        import_visitor = Visitor()
+        source_dir = os.path.abspath(os.path.dirname(self._filepath))
         for alias in node.names:
             name = alias.name
-            source = import_source(name)
+            source, filepath = import_source(name, [source_dir])
+            import_visitor = Visitor(filepath)
             import_visitor.visit(ast.parse(source))
             namespace = import_visitor.namespace()
             self._context.add_symbol(name, name, None, namespace)
@@ -204,20 +222,23 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
         self._context.end_namespace()
 
-def main():
-    filename = 'testcase.py'
-    with open(filename) as test_case:
-        source = test_case.read()
-    tree = ast.parse(source, filename)
-    visitor = Visitor()
-    visitor.visit(tree)
-    warnings = visitor.warnings()
-    for warning in warnings:
-        message = filename + ':{2} {0} "{1}"'.format(*warning[:3])
-        print message + ' ({0})'.format(warning[3]) if warning[3] else message
 
-    print 'Namespace:'
-    print visitor.namespace()
+def analyze(source, filepath=None):
+    tree = ast.parse(source, filepath)
+    visitor = Visitor(filepath)
+    visitor.visit(tree)
+    return visitor.warnings()
+
+
+def analysis(source, filepath=None):
+    return '\n'.join([str(warning) for warning in analyze(source, filepath)])
+
+
+def main():
+    filepath = sys.argv[1]
+    with open(filepath) as source_file:
+        source = source_file.read()
+    print(analysis(source, filepath))
 
 
 if __name__ == '__main__':

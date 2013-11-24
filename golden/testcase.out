@@ -1,0 +1,26 @@
+testcases/testcase.py:6 undefined "x"
+testcases/testcase.py:6 undefined "x"
+testcases/testcase.py:8 undefined "object"
+testcases/testcase.py:22 reassignment "bob = ..."
+testcases/testcase.py:23 reassignment "globe = ..."
+testcases/testcase.py:30 inconsitent-types "Eq" (Str, Num)
+testcases/testcase.py:37 type-change "alice = ..." (Num -> Str)
+testcases/testcase.py:37 reassignment "alice = ..."
+testcases/testcase.py:38 type-change "Return" (List -> Str)
+testcases/testcase.py:43 inconsitent-types "Eq" (Str, List)
+testcases/testcase.py:45 inconsitent-types "Is" (Str, None)
+testcases/testcase.py:49 reassignment "alice = ..."
+testcases/testcase.py:50 type-change "alice = ..." (Str -> Num)
+testcases/testcase.py:50 reassignment "alice = ..."
+testcases/testcase.py:51 maybe-type "Return" (Num -> None)
+testcases/testcase.py:54 assign-type "Str"
+testcases/testcase.py:54 reassignment "a"
+testcases/testcase.py:54 reassignment "b"
+testcases/testcase.py:54 reassignment "c"
+testcases/testcase.py:55 type-change "a = ..." (Any -> List)
+testcases/testcase.py:55 reassignment "a = ..."
+testcases/testcase.py:57 type-change "c = ..." (Any -> Num)
+testcases/testcase.py:57 reassignment "c = ..."
+testcases/testcase.py:65 type-change "i = ..." (Any -> Num)
+testcases/testcase.py:65 reassignment "i = ..."
+testcases/testcase.py:69 undefined "f"
