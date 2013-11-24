@@ -23,4 +23,3 @@ testcases/testcase.py:57 type-change "c = ..." (Any -> Num)
 testcases/testcase.py:57 reassignment "c = ..."
 testcases/testcase.py:65 type-change "i = ..." (Any -> Num)
 testcases/testcase.py:65 reassignment "i = ..."
-testcases/testcase.py:69 undefined "f"

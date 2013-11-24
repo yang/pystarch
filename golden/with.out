@@ -1,0 +1,2 @@
+testcases/with.py:6 type-change "a = ..." (Str -> Num)
+testcases/with.py:6 reassignment "a = ..."

@@ -37,6 +37,12 @@ class Visitor(ast.NodeVisitor):
     def namespace(self):
         return self._context.get_top_namespace()
 
+    def begin_namespace(self):
+        self._context.begin_namespace()
+
+    def end_namespace(self):
+        return self._context.end_namespace()
+
     def warnings(self):
         return self._warnings
 
@@ -103,7 +109,7 @@ class Visitor(ast.NodeVisitor):
             self.warn('undefined', node)
 
     def visit_Module(self, node):
-        self._context.begin_namespace()
+        self.begin_namespace()
         self.generic_visit(node)
 
     def visit_Import(self, node):
@@ -117,15 +123,15 @@ class Visitor(ast.NodeVisitor):
             self._context.add_symbol(name, name, None, namespace)
 
     def visit_ClassDef(self, node):
-        self._context.begin_namespace()
+        self.begin_namespace()
         self.generic_visit(node)
-        namespace = self._context.end_namespace()
+        namespace = self.end_namespace()
         # TODO: get __init__ args
         # TODO: save self.x into namespace where "self" is 1st param to init
         self._context.add_symbol(node.name, node.name, None, namespace)
 
     def visit_FunctionDef(self, node):
-        self._context.begin_namespace()
+        self.begin_namespace()
         argnames = [arg.id for arg in node.args.args]
         argtypes = []
         kwargtypes = {}
@@ -140,7 +146,7 @@ class Visitor(ast.NodeVisitor):
         if node.args.kwarg is not None:
             self._context.add_symbol(node.args.kwarg, 'Dict')
         self.generic_visit(node)
-        namespace = self._context.end_namespace()
+        namespace = self.end_namespace()
         return_type = namespace.get_type('__return__') or 'None'
         self._context.add_symbol(node.name, return_type, argtypes)
 
@@ -216,11 +222,20 @@ class Visitor(ast.NodeVisitor):
 
     def visit_For(self, node):
         # Python doesn't create a namespace for "for", but we will 
-        # treat it as if it did
-        self._context.begin_namespace()
+        # treat it as if it did because it should
+        self.begin_namespace()
+        # TODO: support getting the type of the items of an iterator
+        # so we can replace Any() with the type of the iterator
         self.check_assign(node, node.target, Any())
         self.generic_visit(node)
-        self._context.end_namespace()
+        self.end_namespace()
+
+    def visit_With(self, node):
+        self.begin_namespace()
+        if node.optional_vars:
+            self.check_assign(node, node.optional_vars, node.context_expr)
+        self.generic_visit(node)
+        self.end_namespace()
 
 
 def analyze(source, filepath=None):
