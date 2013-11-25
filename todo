@@ -2,13 +2,33 @@ http://docs.python.org/2/library/compiler.html
 
 High Priority
 =============
+Allow parameterized types:
+    - Function[<Arguments>, <Type>]
+    - Object[<Class>]
+    - List[<Type>]
+Handle attribute assignment
 Process self.x into object namespace
+- When you reach a FunctionDef for __init__
+    set first param to type "Object[<Class>]"
+    need some way to know which Class we are in
+- When you reach an assignment for an attribute
+    if you are in an __init__ body and the left side is the first arg
+    then allow subnamespace assignment without warnings
+- After processing FunctionDef for __init__
+    look for the symbol for "self" (whatever the first parameter is)
+    and copy its subnamespace to the current namespace (along with __init__)
+- In the ClassDef, after processing the class namespace,
+    add two types: "Object[<Class>]" with subnamespace equal to
+    the namespace from the ClassDef and a function "<Class>" with
+    return type "Object[<Class>]" and arguments from the __init__ function
+
 Support import from and aliases
 Fix BinOp: allow multiplication of string with integer,
     addition of strings, lists, tuples
 Support heirarchical module names in import
 Fix Compare: in, not in
 Check that __init__ takes at least one argument
+Make a function type and don't convert to return type until called
 
 Add types of builtins to initial scope
 Support calling functions that are defined later (needed for mutual recursion)
