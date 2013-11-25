@@ -29,6 +29,7 @@ Support heirarchical module names in import
 Fix Compare: in, not in
 Check that __init__ takes at least one argument
 Make a function type and don't convert to return type until called
+Make sure types are consistent inside of explicit list, set, dict definitions
 
 Add types of builtins to initial scope
 Support calling functions that are defined later (needed for mutual recursion)
