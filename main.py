@@ -5,6 +5,7 @@ from imports import import_source
 from expr import get_token, expression_type
 from show import show_node
 from context import Context
+from assign import assign
 
 
 class Any():
@@ -12,7 +13,6 @@ class Any():
 
 class Tuple():
     pass
-
 
 class NodeWarning(object):
     def __init__(self, filepath, category, node, details=None):

@@ -2,6 +2,9 @@ http://docs.python.org/2/library/compiler.html
 
 High Priority
 =============
+Need a reusable function that adds symbols to a namespace based on
+the "target", which can be a name or a tuple
+
 Allow parameterized types:
     - Function[<Arguments>, <Type>]
     - Object[<Class>]
