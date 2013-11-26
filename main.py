@@ -2,10 +2,9 @@ import sys
 import os
 import ast
 from imports import import_source
-from expr import get_token, expression_type
+from expr import get_token, expression_type, assign
 from show import show_node
 from context import Context
-from assign import assign
 
 
 class Any():
@@ -27,25 +26,61 @@ class NodeWarning(object):
             self.category, show_node(self.node), extra)
 
 
-# args parameter is a list of 2-tuples of the form (name, typename)
-# minargs is the minimum number of positional arguments that must be passed
+def call_argtypes(call_node, context):
+    types = []
+    keyword_types = {}
+    for arg in call_node.args:
+        types.append(expression_type(arg, context))
+    for keyword in call_node.keywords:
+        keyword_types[keyword.arg] = expression_type(keyword.value, context)
+    if call_node.starargs is not None:
+        keyword_types['*args'] = expression_type(call_node.starargs, context)
+    if call_node.kwargs is not None:
+        keyword_types['**kwargs'] = expression_type(call_node.kwargs, context)
+    return types, keyword_types
+
+
+# "arguments" parameter is node.args for FunctionDef or Lambda
 class Arguments(object):
-    def __init__(self, args, vararg_name, kwarg_name, minargs):
-        self.args = args
-        self.argnames = [arg[0] for arg in args]
-        self.argtypes = [arg[1] for arg in args]
-        self.kwargtypes = {arg[0]: arg[1] for arg in args if arg[1]}
-        self.vararg_name = vararg_name
-        self.kwarg_name = kwarg_name
-        self.minargs = minargs
+    def __init__(self, arguments, context, decorator_list=[]):
+        self.argnames = [arg.id for arg in arguments.args]
+        self.minargs = len(arguments.args) - len(arguments.defaults)
+        default_types = [expression_type(d, context)
+                            for d in arguments.defaults]
+        self.default_argtypes = ([Any()] * minargs) + default_types
+        self.explicit_argtypes = self.get_explicit_argtypes(decorator_list)
+        self.argtypes = [explicit if explicit != Any() else default
+            for explicit, default
+            in zip(self.explicit_argtypes, self.default_argtypes)]
+        self.kwargtypes = dict(zip(self.argnames, self.argtypes))
+        self.vararg_name = arguments.vararg
+        self.kwarg_name = arguments.kwarg
+
+    def get_explicit_argtypes(self, decorator_list):
+        types_decorator = [d for d in decorator_list
+            if get_token(d) == 'Call' and show_node(d.func) == 'types']
+        if len(types_decorator) == 1:
+            argtypes, kwargtypes = call_argtypes(decorator, context)
+        else:
+            argtypes, kwargtypes = [], {}
+        return argtypes + [kwargtypes.get(name, Any())
+            for name in self.argnames[len(argtypes):]]
+
+    def load_context(self, context):
+        for name, argtype in self.kwargtypes.items():
+            context.add_symbol(name, argtype)
+        if self.vararg_name:
+            context.add_symbol(self.vararg_name, Tuple())
+        if self.kwarg_name:
+            context.add_symbol(self.kwarg_name, Dict())
 
     def __str__(self):
         vararg = (', {0}: Tuple'.format(self.vararg_name)
             if self.vararg_name else '')
         kwarg = (', {0}: Dict'.format(self.kwarg_name)
             if self.kwarg_name else '')
-        return (', '.join(arg[0] + ': ' + arg[1] for arg in self.args)
-            + vararg + kwarg)
+        return (', '.join(name + ': ' + argtype for name, argtype
+            in zip(self.argnames, self.argtypes)) + vararg + kwarg)
 
 
 class ClassArguments(Arguments):
@@ -56,6 +91,7 @@ class ClassArguments(Arguments):
         minargs = arguments.minargs
         super(ClassArguments, self).__init__(args, vararg_name,
             kwarg_name, minargs)
+
 
 
 class Visitor(ast.NodeVisitor):
@@ -166,27 +202,18 @@ class Visitor(ast.NodeVisitor):
         self._context.add_symbol(node.name, node.name, arguments, namespace)
 
     def visit_FunctionDef(self, node):
+        arguments = Arguments(node.args, self._context, node.decorator_list)
+        specified_types = zip(arguments.argnames,
+            arguments.explicit_types, arguments.default_types)
+        for name, explicit_type, default_type in specified_types:
+            if (explicit_type != Any() and default_type != Any() and
+                    default_type != explicit_type):
+                self.warn('default-argument-type-error', node, name)
         self.begin_namespace()
-        argnames = [arg.id for arg in node.args.args]
-        minargs = len(node.args.args) - len(node.args.defaults)
-        argtypes = (['Any'] * minargs) + [self.expr_type(d) for d in
-            node.args.defaults]
-        arguments = Arguments(zip(argnames, argtypes), node.args.vararg,
-            node.args.kwarg, minargs)
-        for decorator in node.decorator_list:
-            if get_token(decorator) == 'Call':
-                if show_node(decorator.func) == 'types':
-                    argtypes, kwargtypes = self.argtypes(decorator)
-        for i, name in enumerate(argnames):
-            # TODO: add support for Python3 annotations here
-            self._context.add_symbol(name, 'Any')
-        if node.args.vararg is not None:
-            self._context.add_symbol(node.args.vararg, 'Tuple')
-        if node.args.kwarg is not None:
-            self._context.add_symbol(node.args.kwarg, 'Dict')
+        arguments.load_context(self._context)
         self.generic_visit(node)
         namespace = self.end_namespace()
-        return_type = namespace.get_type('__return__') or 'None'
+        return_type = namespace.get_type('__return__') or NoneType()
         self._context.add_symbol(node.name, return_type, arguments)
 
     def type_error(self, node, label, got, expected):
