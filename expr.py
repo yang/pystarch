@@ -7,6 +7,44 @@ def get_token(node):
     return node.__class__.__name__
 
 
+# adds assigned symbols to the current namespace, does not do validation
+def assign(target, value, context, generator=False):
+    value_type = expression_type(value, context)
+    if generator:
+        if hasattr(value_type, 'item_type'):
+            assign_type = value_type.item_type
+        elif (hasattr(value_type, 'item_types')
+                and len(value_type.item_types) > 0):
+            # assume that all elements have the same type
+            assign_type = value_type.item_types[0]
+        else:
+            raise TypeError('Invalid type in generator')
+    else:
+        assign_type = value_type
+
+    target_token = get_token(target)
+    if target_token in ('Tuple', 'List'):
+        if isinstance(assign_type, Tuple):
+            if len(target.elts) != len(assign_type.item_types):
+                raise ValueError('Tuple unpacking length mismatch')
+            assignments = [(element.id, item_type) for element, item_type
+                in zip(target.elts, assign_type.item_types)]
+        elif isinstance(assign_type, List):
+            element_type = assign_type.item_type
+            assignments = [(element.id, element_type)
+                for element in target.elts]
+        else:
+            raise TypeError('Invalid value type in assignment')
+    elif target_token == 'Name':
+        assignments = [(target.id, assign_type)]
+    else:
+        raise RuntimeError('Unrecognized assignment target ' + target_token)
+
+    for name, assigned_type in assignments:
+        context.add_symbol(name, assigned_type)
+    return assignments
+
+
 # Note: "True" and "False" evalute to Bool because they are symbol
 # names that have their types builtin to the default context. Similarly,
 # "None" has type NoneType.
@@ -40,13 +78,19 @@ def expression_type(node, context):
     if token == 'Set':
         return Set(recur(node.elts[0]))
     if token == 'ListComp':
-        return List(recur(node.elt))
+        context.begin_namespace()
+        for generator in node.generators:
+            item_type = expression_type(generator.iter, context)
+            assign(generator.target, generator.iter, context, generator=True)
+        element_type = expression_type(node.elt, context)
+        context.end_namespace()
+        return List(element_type)
     if token == 'SetComp':
         return Set(recur(node.elt))
     if token == 'DictComp':
         return Dict(recur(node.key), recur(node.value))
     if token == 'GeneratorExp':
-        return Tuple(recur(node.elt))
+        return List(recur(node.elt))
     if token == 'Yield':
         return recur(node.value)
     if token == 'Compare':
@@ -64,11 +108,13 @@ def expression_type(node, context):
     if token == 'Subscript':
         return recur(node.value)
     if token == 'Name':
-        return context.get_type(node.id, Undefined)
+        return context.get_type(node.id, Undefined())
     if token == 'List':
-        return List(recur(node.elts[0]))
+        return (List(recur(node.elts[0])) if len(node.elts) > 0
+            else List(NoneType()))
     if token == 'Tuple':
-        return Tuple(recur(node.elts[0]))
+        item_types = [recur(e) for e in node.elts]
+        return Tuple(item_types)
     raise Exception('evalute_type does not recognize ' + token)
 
 
@@ -77,10 +123,14 @@ def unit_test():
     source = [
         '5 + 5',
         'not True',
-        '+"abc"'
+        '+"abc"',
+        '[a for a in (1, 2, 3)]',
+        '[a for a in [1, 2, 3]]',
+        '[a for a in {1, 2, 3}]',
+        '[a * "a" for a in [1, 2, 3]]',
     ]
     module = ast.parse('\n'.join(source))
-    #print(ast.dump(module))
+    print(ast.dump(module))
     for i, statement in enumerate(module.body):
         expression = statement.value
         print(source[i] + ': ' + str(expression_type(expression, context)))

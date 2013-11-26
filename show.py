@@ -1,5 +1,3 @@
-from expr import get_token
-
 
 def show_node(node):
     token = get_token(node)

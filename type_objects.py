@@ -15,6 +15,11 @@ class ItemTypeMixin(object):
     def __str__(self):
         return '{0}[{1}]'.format(self.__class__.__name__, self.item_type)
 
+class TupleMixin(object):
+    def __str__(self):
+        return '{0}[{1}]'.format(self.__class__.__name__,
+            ','.join([str(x) for x in self.item_types]))
+
 class CallableMixin(object):
     def __str__(self):
         return '{0}[{1} -> {2}]'.format(self.__class__.__name__,
@@ -32,9 +37,9 @@ class List(EqualityMixin, ItemTypeMixin):
     def __init__(self, item_type):
         self.item_type = item_type
 
-class Tuple(EqualityMixin, ItemTypeMixin):
-    def __init__(self, item_type):
-        self.item_type = item_type
+class Tuple(EqualityMixin, TupleMixin):
+    def __init__(self, item_types):
+        self.item_types = item_types
 
 class Set(EqualityMixin, ItemTypeMixin):
     def __init__(self, item_type):
