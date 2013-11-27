@@ -77,40 +77,81 @@ def compile(source, filename, mode, flags=0, dont_inherit=0):
 def complex(real, imag):
     return number
 
-@types()
-def delattr():
-@types()
-def dict():
-@types()
-def dir():
-@types()
-def divmod():
-@types()
-def enumerate():
-@types()
-def eval():
-@types()
-def execfile():
-@types()
-def file():
-@types()
-def filter():
-@types()
-def float():
-@types()
-def format():
-@types()
-def frozenset():
-@types()
-def getattr():
+@types(instance, string)
+def delattr(object, name):
+    return none
+
+# TODO: this requires templating
+@types([(anytype, anytype)])
+def dict(iterable=None, **kwargs):
+    if iterable is not None:
+        return {a: b for a, b in iterable}
+    else:
+        return kwargs
+
+@types(instance)
+def dir(object=None):
+    return [string]
+
+@types(number, number)
+def divmod(a, b):
+    return (number, number)
+
+@types([anytype], number)
+def enumerate(sequence, start=0):
+    return [(number, anytype)]
+
+@types(string, {string: anytype}, {string: anytype})
+def eval(expression, globals, locals):
+    return anytype
+
+@types(string, {string: anytype}, {string: anytype})
+def execfile(filename, globals, locals):
+    return anytype
+
+@types(string, string, number)
+def file(name, mode='r', buffering=0):
+    return instance
+
+# TODO: needs templating
+@types(functiontype, [anytype])
+def filter(function, iterable):
+    return iterable
+
+@types(string)
+def float(x='0'):
+    return number
+
+@types(anytype, string)
+def format(value, format_spec=None):
+    return string
+
+# TODO: needs templating
+@types([anytype])
+def frozenset(iterable=[]):
+    return {anytype}
+
+# TODO: the value depends on the arguments and templating won't help
+@types(instance, string, anytype)
+def getattr(object, name, default=None):
+    return anytype
+
 @types()
 def globals():
-@types()
-def hasattr():
-@types()
-def hash():
-@types()
-def help():
+    return {string: anytype}
+
+@types(instance, string)
+def hasattr(object, name):
+    return boolean
+
+@types(instance)
+def hash(object):
+    return number
+
+@types(instance)
+def help(object=None):
+    return string
+
 @types()
 def hex():
 @types()
