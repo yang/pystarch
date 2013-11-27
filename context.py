@@ -1,4 +1,5 @@
-
+from type_objects import Any, NoneType, Bool, Num, Str, List, Tuple, Set, \
+    Dict, Function, Instance, Class, Undefined
 
 # Tricky: need to support obj1.obj2.x where obj2 is an instance
 # of a class that may not be defined in the current scope
@@ -14,113 +15,39 @@
 # Whenever you add to LoadScope, it automatically adds to NameScope,
 # but not the other way around.
 
-# import statement creates a whole new scope heirarchy, not just a new level
 
-# type check Attribute(expr, attr):
-# classname = expr_type(expr)
-# typename = scope.getattr(classname, attr) # 
-
-
-def builtin_namespace():
-    namespace = Namespace()
-    namespace.add_symbol('abs', 'Num', [('x', 'Num')])
-    namespace.add_symbol('all', 'Bool', [('iterable', 'Tuple')])
-    namespace.add_symbol('any', 'Bool', [('iterable', 'Tuple')])
-    namespace.add_symbol('basestring', 'Str', [])
-    namespace.add_symbol('bin', 'Str', [('x', 'Num')])
-    namespace.add_symbol('bool', 'Bool', [('x', 'Num')])
-    namespace.add_symbol('int', 'Num', [('x', 'Num'), ('base', 'Num')])
-    namespace.add_symbol('float', 'Num', [('x', 'Num')])
-    namespace.add_symbol('str', 'Str', [('object', 'Str')])
-    namespace.add_symbol('None', 'None')
-    namespace.add_symbol('True', 'Bool')
-    namespace.add_symbol('False', 'Bool')
-    return namespace
-
-
-class Symbol(object):
-    def __init__(self, name, typename, arguments, subnamespace):
-        self.name = name
-        self.typename = typename
-        self.subnamespace = subnamespace
-        self.arguments = arguments
-
-    def __str__(self):
-        first_line = '{0} {1}'.format(self.typename, self.name)
-        if self.arguments is not None:
-            first_line += '({0})'.format(self.arguments)
-        remaining = str(self.subnamespace)
-        if len(remaining) == 0:
-            return first_line
-        indented = '\n'.join([2*' ' + line for line in remaining.splitlines()])
-        return first_line + '\n' + indented
-
-
-# class MyClass: # name='MyClass', typename='MyClass', subnamespace=...
-# m = MyClass()  # name='m', typename='MyClass', subnamespace=None
-# import mymodule # name='mymodule', typename='mymodule', subnamespace=...
-class Namespace(object):
-    def __init__(self):
-        self.symbols = {}
-
-    def add_symbol(self, name, typename, arguments=None, subnamespace=None):
-        self.symbols[name] = Symbol(name, typename, arguments,
-            subnamespace or Namespace())
-
-    def remove_symbol(self, name):
-        self.symbols.pop(name)
-
-    def get_symbol(self, name, default=None):
-        return self.symbols.get(name, default)
-
-    def get_type(self, name, default=None):
-        symbol = self.get_symbol(name)
-        return symbol.typename if symbol else default
-
-    def __contains__(self, name):
-        return name in self.symbols
-
-    def __str__(self):
-        return '\n'.join([str(symbol) for symbol in self.symbols.itervalues()])
+def builtin_scope():
+    return {
+        'None': NoneType(),
+        'True': Bool(),
+        'False': Bool(),
+    }
 
 
 class Context(object):
     def __init__(self):
-        self.namespace_layers = [builtin_namespace()]
+        self.scope_layers = [builtin_scope()]
 
-    def begin_namespace(self):
-        self.namespace_layers.append(Namespace())
+    def begin_scope(self):
+        self.scope_layers.append({})
 
-    def end_namespace(self):
-        return self.namespace_layers.pop()
+    def end_scope(self):
+        return self.scope_layers.pop()
 
-    def get_top_namespace(self):
-        return self.namespace_layers[-1]
+    def get_top_scope(self):
+        return self.scope_layers[-1]
 
-    def add_symbol(self, name, typename, arguments=None, subnamespace=None):
-        namespace = subnamespace or Namespace()
-        return self.get_top_namespace().add_symbol(name, typename,
-            arguments, namespace)
+    def add_symbol(self, name, type):
+        self.get_top_scope()[name] = type
 
     def remove_symbol(self, name):
-        for namespace in reversed(self.namespace_layers):
-            if name in namespace:
-                namespace.remove_symbol(name)
+        for scope in reversed(self.scope_layers):
+            if name in scope:
+                del scope[name]
                 return
 
-    def get_symbol(self, name, default=None):
-        for namespace in reversed(self.namespace_layers):
-            if name in namespace:
-                return namespace.get_symbol(name)
-        return default
-
     def get_type(self, name, default=None):
-        symbol = self.get_symbol(name)
-        return symbol.typename if symbol else default
-
-    # typename is what is passed after evaluating the type of the
-    # expresssion on the left hand side of the period operator
-    def get_attr_type(self, typename, attr, default=None):
-        symbol = self.get_symbol(typename)
-        return symbol.subnamespace.get_type(attr) if symbol else default
-
+        for scope in reversed(self.scope_layers):
+            if name in scope:
+                return scope[name]
+        return default

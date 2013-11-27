@@ -2,7 +2,7 @@ import sys
 import os
 import ast
 from imports import import_source
-from expr import get_token, expression_type, assign
+from expr import get_token, expression_type, assign, call_argtypes, Arguments
 from show import show_node
 from context import Context
 
@@ -12,6 +12,7 @@ class Any():
 
 class Tuple():
     pass
+
 
 class NodeWarning(object):
     def __init__(self, filepath, category, node, details=None):
@@ -93,19 +94,6 @@ class Visitor(ast.NodeVisitor):
             # Any type can be assigned to a name, so no type check
             self.check_assign_name(node, target.id, value)
 
-    def argtypes(self, call_node):
-        types = []
-        keyword_types = {}
-        for arg in call_node.args:
-            types.append(self.expr_type(arg))
-        for keyword in call_node.keywords:
-            keyword_types[keyword.arg] = self.expr_type(keyword.value)
-        if call_node.starargs is not None:
-            keyword_types['*args'] = self.expr_type(call_node.starargs)
-        if call_node.kwargs is not None:
-            keyword_types['**kwargs'] = self.expr_type(call_node.kwargs)
-        return types, keyword_types
-
     def visit_Name(self, node):
         if self._context.get_type(node.id) is None:
             self.warn('undefined', node)
@@ -166,9 +154,9 @@ class Visitor(ast.NodeVisitor):
             return self.warn('undefined-function', node, node.func.id)
         if not symbol.arguments:
             return self.warn('not-a-function', node, node.func.id)
-        argtypes, kwargtypes = self.argtypes(node)
+        argtypes, kwargtypes = call_argtypes(node, self._context)
         # make sure all required arguments are specified
-        minargs = symbol.arguments.minargs
+        minargs = symbol.arguments.min_count
         required_kwargs = symbol.arguments.argnames[len(argtypes):minargs]
         missing = [name for name in required_kwargs if name not in kwargtypes]
         for missing_argument in missing:
