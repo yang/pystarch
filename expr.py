@@ -84,7 +84,10 @@ def expression_type(node, context):
     if token == 'IfExp':
         return recur(node.body)
     if token == 'Dict':
-        return Dict(recur(node.keys[0]), recur(node.values[0]))
+        if len(node.keys) > 0 and len(node.values) > 0:
+            return Dict(recur(node.keys[0]), recur(node.values[0]))
+        else:
+            return Dict(NoneType(), NoneType())
     if token == 'Set':
         return Set(recur(node.elts[0]))
     if token == 'ListComp':

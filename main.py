@@ -42,19 +42,37 @@ def call_argtypes(call_node, context):
 
 # "arguments" parameter is node.args for FunctionDef or Lambda
 class Arguments(object):
-    def __init__(self, arguments, context, decorator_list=[]):
-        self.argnames = [arg.id for arg in arguments.args]
-        self.minargs = len(arguments.args) - len(arguments.defaults)
+    def __init__(self, arguments=None, context=None, decorator_list=[]):
+        if arguments is None:
+            return
+        if context is None:
+            context = Context()
+        self.names = [arg.id for arg in arguments.args]
+        self.min_count = len(arguments.args) - len(arguments.defaults)
         default_types = [expression_type(d, context)
                             for d in arguments.defaults]
-        self.default_argtypes = ([Any()] * minargs) + default_types
-        self.explicit_argtypes = self.get_explicit_argtypes(decorator_list)
-        self.argtypes = [explicit if explicit != Any() else default
+        self.default_types = ([Any()] * self.min_count) + default_types
+        self.explicit_types = self.get_explicit_argtypes(decorator_list)
+        self.types = [explicit if explicit != Any() else default
             for explicit, default
-            in zip(self.explicit_argtypes, self.default_argtypes)]
-        self.kwargtypes = dict(zip(self.argnames, self.argtypes))
+            in zip(self.explicit_types, self.default_types)]
         self.vararg_name = arguments.vararg
         self.kwarg_name = arguments.kwarg
+
+    @classmethod
+    def copy_without_first_argument(klass, other_arguments):
+        arguments = klass()
+        arguments.names = other_arguments.names[1:]
+        arguments.types = other_arguments.types[1:]
+        arguments.default_types = other_arguments.default_types[1:]
+        arguments.explicit_types = other_arguments.explicit_types[1:]
+        arguments.min_count = max(0, other_arguments.min_count - 1)
+        arguments.vararg_name = other_arguments.vararg
+        arguments.kwarg_name = other_arguments.kwarg
+        return arguments
+
+    def get_dict(self):
+        return dict(zip(self.names, self.types))
 
     def get_explicit_argtypes(self, decorator_list):
         types_decorator = [d for d in decorator_list
@@ -64,7 +82,7 @@ class Arguments(object):
         else:
             argtypes, kwargtypes = [], {}
         return argtypes + [kwargtypes.get(name, Any())
-            for name in self.argnames[len(argtypes):]]
+            for name in self.names[len(argtypes):]]
 
     def load_context(self, context):
         for name, argtype in self.kwargtypes.items():
@@ -81,17 +99,6 @@ class Arguments(object):
             if self.kwarg_name else '')
         return (', '.join(name + ': ' + argtype for name, argtype
             in zip(self.argnames, self.argtypes)) + vararg + kwarg)
-
-
-class ClassArguments(Arguments):
-    def __init__(self, arguments):
-        args = arguments.args[1:] if len(arguments.args) > 0 else []
-        vararg_name = arguments.vararg_name
-        kwarg_name = arguments.kwarg_name
-        minargs = arguments.minargs
-        super(ClassArguments, self).__init__(args, vararg_name,
-            kwarg_name, minargs)
-
 
 
 class Visitor(ast.NodeVisitor):
@@ -204,7 +211,7 @@ class Visitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         arguments = Arguments(node.args, self._context, node.decorator_list)
         specified_types = zip(arguments.argnames,
-            arguments.explicit_types, arguments.default_types)
+            arguments.explicit_argtypes, arguments.default_argtypes)
         for name, explicit_type, default_type in specified_types:
             if (explicit_type != Any() and default_type != Any() and
                     default_type != explicit_type):
