@@ -55,23 +55,23 @@ class Dict(EqualityMixin):
             self.key_type, self.value_type)
 
 class Function(EqualityMixin, CallableMixin):
-    def __init__(self, arg_types, return_type):
-        self.arg_types = arg_types
+    def __init__(self, arguments, return_type):
+        self.arguments = arguments
         self.return_type = return_type
 
 # set class_name to __import__ for imports
 class Instance(EqualityMixin):
-    def __init__(self, class_name, symbols):
+    def __init__(self, class_name, attributes):
         self.class_name = class_name
-        self.symbols = symbols
+        self.attributes = attributes
 
     def __str__(self):
         return '{0}[{1}]'.format(self.__class__.__name__, self.class_name)
 
 # a Class is a Function that returns an Instance plus static methods/attrs
 class Class(EqualityMixin, CallableMixin):
-    def __init__(self, arg_types, return_type, symbols):
-        self.arg_types = arg_types
+    def __init__(self, arguments, return_type, attributes):
+        self.arguments = arguments
         self.return_type = return_type
         # symbols only contains class methods and class attributes
-        self.symbols = symbols
+        self.attributes = attributes

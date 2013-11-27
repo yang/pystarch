@@ -51,3 +51,6 @@ class Context(object):
             if name in scope:
                 return scope[name]
         return default
+
+    def __str__(self):
+        return '\n'.join([str(x) for x in self.scope_layers])

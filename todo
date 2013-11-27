@@ -2,6 +2,7 @@ http://docs.python.org/2/library/compiler.html
 
 High Priority
 =============
+Fix arguments constructor to work when all parameters are None
 Handle attribute assignment
 Process self.x into object namespace
 - When you reach a FunctionDef for __init__

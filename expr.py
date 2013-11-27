@@ -25,15 +25,22 @@ def call_argtypes(call_node, context):
 class Arguments(object):
     def __init__(self, arguments=None, context=None, decorator_list=[]):
         if arguments is None:
-            return
-        if context is None:
-            context = Context()
+            self.names = []
+            self.types = []
+            self.default_types = []
+            self.explicit_types = []
+            self.vararg_name = None
+            self.kwarg_name = None
+            self.min_count = 0
+            return      # only for copy constructor below
+        assert context is not None
         self.names = [arg.id for arg in arguments.args]
         self.min_count = len(arguments.args) - len(arguments.defaults)
         default_types = [expression_type(d, context)
                             for d in arguments.defaults]
         self.default_types = ([Any()] * self.min_count) + default_types
-        self.explicit_types = self.get_explicit_argtypes(decorator_list)
+        self.explicit_types = self.get_explicit_argtypes(
+            decorator_list, context)
         self.types = [explicit if explicit != Any() else default
             for explicit, default
             in zip(self.explicit_types, self.default_types)]
@@ -48,30 +55,30 @@ class Arguments(object):
         arguments.default_types = other_arguments.default_types[1:]
         arguments.explicit_types = other_arguments.explicit_types[1:]
         arguments.min_count = max(0, other_arguments.min_count - 1)
-        arguments.vararg_name = other_arguments.vararg
-        arguments.kwarg_name = other_arguments.kwarg
+        arguments.vararg_name = other_arguments.vararg_name
+        arguments.kwarg_name = other_arguments.kwarg_name
         return arguments
 
     def get_dict(self):
         return dict(zip(self.names, self.types))
 
-    def get_explicit_argtypes(self, decorator_list):
+    def get_explicit_argtypes(self, decorator_list, context):
         types_decorator = [d for d in decorator_list
-            if get_token(d) == 'Call' and show_node(d.func) == 'types']
+            if get_token(d) == 'Call' and d.func.id == 'types']
         if len(types_decorator) == 1:
-            argtypes, kwargtypes = call_argtypes(decorator, context)
+            argtypes, kwargtypes = call_argtypes(types_decorator[0], context)
         else:
             argtypes, kwargtypes = [], {}
         return argtypes + [kwargtypes.get(name, Any())
             for name in self.names[len(argtypes):]]
 
     def load_context(self, context):
-        for name, argtype in self.kwargtypes.items():
+        for name, argtype in self.get_dict().items():
             context.add_symbol(name, argtype)
         if self.vararg_name:
-            context.add_symbol(self.vararg_name, Tuple())
+            context.add_symbol(self.vararg_name, List(Any()))
         if self.kwarg_name:
-            context.add_symbol(self.kwarg_name, Dict())
+            context.add_symbol(self.kwarg_name, Dict(Any(), Any()))
 
     def __str__(self):
         vararg = (', {0}: Tuple'.format(self.vararg_name)
@@ -83,7 +90,7 @@ class Arguments(object):
 
 
 # adds assigned symbols to the current namespace, does not do validation
-def assign(target, value, context, generator=False):
+def get_assignments(target, value, context, generator=False):
     value_type = expression_type(value, context)
     if generator:
         if hasattr(value_type, 'item_type'):
@@ -114,10 +121,13 @@ def assign(target, value, context, generator=False):
         assignments = [(target.id, assign_type)]
     else:
         raise RuntimeError('Unrecognized assignment target ' + target_token)
+    return assignments
 
+
+def assign(target, value, context, generator=False):
+    assignments = get_assignments(target, value, context, generator)
     for name, assigned_type in assignments:
         context.add_symbol(name, assigned_type)
-    return assignments
 
 
 def comprehension_type(elements, generators, context):
@@ -143,7 +153,7 @@ def expression_type(node, context):
     if token == 'BoolOp':
         return recur(node.values[0])
     if token == 'BinOp':
-        return Str() if (get_token(node.op) in ['Add', 'Mult']:
+        return Str() if (get_token(node.op) in ['Add', 'Mult']
             and Str() in [recur(node.left), recur(node.right)]) else Num()
     if token == 'UnaryOp':
         return Bool() if get_token(node.op) == 'Not' else Num()
@@ -153,8 +163,8 @@ def expression_type(node, context):
         return recur(node.body)
     if token == 'Dict':
         key_type = recur(node.keys[0]) if len(node.keys) > 0 else NoneType()
-        value_type = recur(node.values[0]) if len(node.values) > 0
-            else NoneType()
+        value_type = (recur(node.values[0]) if len(node.values) > 0
+            else NoneType())
         return Dict(key_type, value_type)
     if token == 'Set':
         return Set(recur(node.elts[0]))
@@ -172,11 +182,12 @@ def expression_type(node, context):
         element_type, = comprehension_type([node.elt], node.generators, context)
         return List(element_type)
     if token == 'Yield':
-        return recur(node.value)
+        return List(recur(node.value))
     if token == 'Compare':
         return Bool()
     if token == 'Call':
-        return recur(node.func).return_type
+        function_type = recur(node.func)
+        return (function_type.return_type if isinstance(function_type, Function) else Undefined())
     if token == 'Repr':    # TODO: is Repr a Str?
         return Str()
     if token == 'Num':
@@ -184,7 +195,10 @@ def expression_type(node, context):
     if token == 'Str':
         return Str()
     if token == 'Attribute':
-        return context.get_attr_type(recur(node.value), node.attr)
+        value_type = recur(node.value)
+        if not isinstance(value_type, Instance):
+            raise TypeError('Accessing attribute on non-instance type')
+        return value_type.attributes[node.attr]
     if token == 'Subscript':
         return recur(node.value)
     if token == 'Name':
