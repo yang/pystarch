@@ -222,7 +222,7 @@ def expression_type(node, context):
     if token == 'Attribute':
         value_type = recur(node.value)
         if not isinstance(value_type, Instance):
-            raise TypeError('Accessing attribute on non-instance type')
+            return Undefined()
         return value_type.attributes[node.attr]
     if token == 'Subscript':
         return recur(node.value)

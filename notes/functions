@@ -1,0 +1,29 @@
+
+When a Python function is defined, the types of the arguments are not
+specified, so it is not always possible to determine the return type of
+the function. For example:
+
+def get_first_element(x):
+    return x[0]
+
+The return type of this function depends on the type of the argument and the
+function may return many different types if it is called with different
+arguments.
+
+The type could be specified using a template, but this would be quite
+complicated and would have to support multiple template formats like:
+
+    x = (List[<type>] or Tuple[<type>]) => <type>
+
+The solution that we use is to defer type inference until the point where
+the function is called. At this point, we will be able to determine the
+types of all the arguments and we can use this information to determine
+the return type. This method lets us have the benefits of templating without
+the complexity.
+
+One caveat is that recursion is tricky when you are determining return types
+at call-time. The solution to this is to assume that the return type is "Any"
+when a recursive call is detected and then make the whole system let "Any"
+get overridden by any other type. This means that when the recursion base
+case is processed, the type of the base case will override "Any" and it
+will be the assumed return type of the function.

@@ -2,15 +2,27 @@ http://docs.python.org/2/library/compiler.html
 
 High Priority
 =============
-Have to memoize the return_type callable so that it doesn't have to
-    revisit the body the second time it sees the exact same types. Otherwise
-    recursion will not work.
 Make a const wrapper to Context to pass to expr.py to guarantee it does not
     get modified, but can still be read from
 Visit function body in visit_Call
 Fix slice: can mean indexing into list
-Fix arguments constructor to work when all parameters are None
+
+Support import from and aliases
+Fix BinOp: allow multiplication of string with integer,
+    addition of strings, lists, tuples
+Support heirarchical module names in import
+Fix Compare: in, not in
+Check that __init__ takes at least one argument
+Make sure types are consistent inside of explicit list, set, dict definitions
+
+Add types of builtins to initial scope
+Support calling functions that are defined later (needed for mutual recursion)
+
+
+Classes
+=======
 Handle attribute assignment
+Handle attribute assignment when it is one item of a tuple assignment
 Process self.x into object namespace
 - When you reach a FunctionDef for __init__
     set first param to type "Object[<Class>]"
@@ -25,18 +37,6 @@ Process self.x into object namespace
     add two types: "Object[<Class>]" with subnamespace equal to
     the namespace from the ClassDef and a function "<Class>" with
     return type "Object[<Class>]" and arguments from the __init__ function
-
-Support import from and aliases
-Fix BinOp: allow multiplication of string with integer,
-    addition of strings, lists, tuples
-Support heirarchical module names in import
-Fix Compare: in, not in
-Check that __init__ takes at least one argument
-Make a function type and don't convert to return type until called
-Make sure types are consistent inside of explicit list, set, dict definitions
-
-Add types of builtins to initial scope
-Support calling functions that are defined later (needed for mutual recursion)
 
 Return Types
 ============
