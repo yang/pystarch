@@ -5,7 +5,8 @@ import ast
 from type_objects import Any, Num, List, Dict, Tuple, Instance, Class, \
     Function, NoneType, Bool
 from imports import import_source
-from expr import expression_type, call_argtypes, Arguments, get_assignments
+from expr import expression_type, call_argtypes, Arguments, get_assignments, \
+    AssignError
 from show import show_node
 from context import Context
 
@@ -23,8 +24,31 @@ class NodeWarning(object):
             self.category, show_node(self.node), extra)
 
 
+class FunctionEvaluator(object):
+    def __init__(self, body_node, def_context):
+        self.body_node = body_node
+        self.context = def_context
+        self.cache = []
+
+    def __call__(self, argument_scope):
+        for scope, result in self.cache:
+            if scope == argument_scope:
+                return result
+        self.context.begin_scope()
+        self.context.merge_scope(argument_scope)
+        visitor = Visitor(context=self.context)
+        for stmt in self.body_node:
+            visitor.visit(stmt)
+        warnings = visitor.warnings()
+        scope = self.context.end_scope()
+        return_type = scope.get('__return__', NoneType())
+        result = (return_type, warnings)
+        self.cache.append((argument_scope, result))
+        return result
+
+
 class Visitor(ast.NodeVisitor):
-    def __init__(self, filepath, context=None):
+    def __init__(self, filepath='', context=None):
         ast.NodeVisitor.__init__(self)
         self._filepath = filepath
         self._warnings = []
@@ -90,7 +114,7 @@ class Visitor(ast.NodeVisitor):
         try:
             assignments = get_assignments(target, value, self._context,
                 generator=generator)
-        except (TypeError, ValueError):
+        except AssignError:
             self.warn('assignment-error', node)
             return
         for name, assigned_type in assignments:
@@ -139,18 +163,7 @@ class Visitor(ast.NodeVisitor):
             if (explicit_type != Any() and default_type != Any() and
                     default_type != explicit_type):
                 self.warn('default-argument-type-error', node, name)
-        # TODO: need to run get_return_type now to check for errors since
-        # errors will not be reported by get_return_type
-        def get_return_type(argument_scope, body_node, context):
-            context.begin_scope()
-            context.merge_scope(argument_scope)
-            Visitor(self._filepath, context).visit(body_node)
-            scope = context.end_scope()
-            return scope.get('__return__', NoneType())
-        context = self._context.copy()
-        # create a closure with current context
-        return_type = lambda argument_scope: get_return_type(
-            argument_scope, node.body, context)
+        return_type = FunctionEvaluator(node.body, self._context.copy())
         function_type = Function(arguments, return_type)
         self._context.add_symbol(node.name, function_type)
 
@@ -288,11 +301,15 @@ class Visitor(ast.NodeVisitor):
         self.end_scope()
 
 
+def dump_scope(scope):
+    return '\n'.join([name + ' ' + str(typ) for name, typ in scope.items()])
+
+
 def analyze(source, filepath=None):
     tree = ast.parse(source, filepath)
     visitor = Visitor(filepath)
     visitor.visit(tree)
-    #print(visitor.scope())
+    print(dump_scope(visitor.scope()))
     return visitor.warnings()
 
 

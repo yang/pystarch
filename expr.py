@@ -103,9 +103,12 @@ class Arguments(object):
             if self.vararg_name else '')
         kwarg = (', {0}: Dict'.format(self.kwarg_name)
             if self.kwarg_name else '')
-        return (', '.join(name + ': ' + argtype for name, argtype
+        return (', '.join(name + ': ' + str(argtype) for name, argtype
             in zip(self.names, self.types)) + vararg + kwarg)
 
+
+class AssignError(RuntimeError):
+    pass
 
 # adds assigned symbols to the current namespace, does not do validation
 def get_assignments(target, value, context, generator=False):
@@ -118,7 +121,7 @@ def get_assignments(target, value, context, generator=False):
             # assume that all elements have the same type
             assign_type = value_type.item_types[0]
         else:
-            raise TypeError('Invalid type in generator')
+            raise AssignError('Invalid type in generator')
     else:
         assign_type = value_type
 
@@ -126,7 +129,7 @@ def get_assignments(target, value, context, generator=False):
     if target_token in ('Tuple', 'List'):
         if isinstance(assign_type, Tuple):
             if len(target.elts) != len(assign_type.item_types):
-                raise ValueError('Tuple unpacking length mismatch')
+                raise AssignError('Tuple unpacking length mismatch')
             assignments = [(element.id, item_type) for element, item_type
                 in zip(target.elts, assign_type.item_types)]
         elif isinstance(assign_type, List):
@@ -134,7 +137,7 @@ def get_assignments(target, value, context, generator=False):
             assignments = [(element.id, element_type)
                 for element in target.elts]
         else:
-            raise TypeError('Invalid value type in assignment')
+            raise AssignError('Invalid value type in assignment')
     elif target_token == 'Name':
         assignments = [(target.id, assign_type)]
     else:
@@ -149,11 +152,11 @@ def assign(target, value, context, generator=False):
 
 
 def comprehension_type(elements, generators, context):
-    context.begin_namespace()
+    context.begin_scope()
     for generator in generators:
         assign(generator.target, generator.iter, context, generator=True)
     element_types = [expression_type(element, context) for element in elements]
-    context.end_namespace()
+    context.end_scope()
     return element_types
 
 
@@ -208,7 +211,7 @@ def expression_type(node, context):
             return Undefined()
         arguments = function_type.arguments
         argument_scope = make_argument_scope(node, arguments, context)
-        return function_type.return_type(argument_scope)
+        return function_type.return_type(argument_scope)[0]
     if token == 'Repr':    # TODO: is Repr a Str?
         return Str()
     if token == 'Num':

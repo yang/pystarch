@@ -2,6 +2,12 @@ http://docs.python.org/2/library/compiler.html
 
 High Priority
 =============
+Have to memoize the return_type callable so that it doesn't have to
+    revisit the body the second time it sees the exact same types. Otherwise
+    recursion will not work.
+Make a const wrapper to Context to pass to expr.py to guarantee it does not
+    get modified, but can still be read from
+Visit function body in visit_Call
 Fix slice: can mean indexing into list
 Fix arguments constructor to work when all parameters are None
 Handle attribute assignment
