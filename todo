@@ -2,6 +2,7 @@ http://docs.python.org/2/library/compiler.html
 
 High Priority
 =============
+Fix slice: can mean indexing into list
 Fix arguments constructor to work when all parameters are None
 Handle attribute assignment
 Process self.x into object namespace
@@ -30,7 +31,30 @@ Make sure types are consistent inside of explicit list, set, dict definitions
 
 Add types of builtins to initial scope
 Support calling functions that are defined later (needed for mutual recursion)
-Check each assignment in AssTuple
+
+Return Types
+============
+A lot of functions in Python have return types that depend on the arguments.
+Therefore, at least for some functions, we will have to determine the return
+type when we encounter the call rather than the definition. The way we can
+do this is by checking if the computed return type based on the definition
+contains an Any() type anywhere inside it. If it does, then we save the
+function's code into the return_type attribute of the function's type. That
+way, even if the function is passed around as a symbol, we can still easily
+access the code to process it with new arguments to figure out what the
+types should be. Actually, I don't think this is going to work the way I am
+thinking. A function like getattr can take a string and that string may not
+be determinable at compile-time, so the return type is compile-time
+indeterminate. Therefore, we will just have to say that getattr returns
+anytype. We can still do template types though. When processing a function
+definition, we replace any parameters that are anytype with a unique
+type object like Any(1), Any(2), etc. Then the return type will contain these
+placeholders that we can evaluate at call time. We may have to ban getattr.
+
+I think for a lot of the builtin functions, they should be treated much like
+how we are treating expressions now. For example, if we use the list()
+function to convert a tuple to a list, we should be able to extract the type
+of the first element of the tuple to get the assumed element type of the list.
 
 Low Priority
 ============
