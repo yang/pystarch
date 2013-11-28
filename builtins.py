@@ -4,7 +4,6 @@ signatures, but have stubbed implementations. Some builtins are commented
 out because they are deprecated or not valid in the functional sublanguage.
 """
 
-none = None
 boolean = True
 number = 0
 string = ''
@@ -21,12 +20,12 @@ def all(iterable):
 def any(iterable):
     return boolean
 
-#def apply(function, args, keywords={}):
-#    return anytype
+#def apply(func, args, keywords={}):
+#    pass
 
-@types()
 class basestring(object):
-    pass
+    def __init__(self):
+        pass
 
 @types(number)
 def bin(x):
@@ -35,8 +34,8 @@ def bin(x):
 def bool(x=False):
     return boolean
 
-#def buffer(obj, offset=0, size=None):
-#    return [anytype]
+#def buffer(obj, offset=number, size=None):
+#    pass
 
 def bytearray(source=string, encoding=string, errors=string):
     return [number]
@@ -48,29 +47,28 @@ def callable(obj):
 def chr(i):
     return string
 
-# TODO: this is probably wrong
-def classmethod(function):
-    return function
+#def classmethod(func):
+#    pass
 
 def cmp(x, y):
     return number
 
-#@types(number, number)
-#def coerce(x, y):
-#    return (number, number)
+@types(number, number)
+def coerce(x, y):
+    return (number, number)
 
 #@types(string, string, string, number, number)
-#def compile(source, filename, mode, flags=0, dont_inherit=0):
-#    return instance
+#def compile(source, filename, mode, flags=number, dont_inherit=number):
+#    pass
 
 @types(number, number)
-def complex(real, imag):
+def complex(real=number, imag=number):
     return number
 
-#def delattr(obj, name):
-#    return none
+def delattr(obj, name):
+    return None
 
-# TODO: how to support **kwargs
+# TODO: how to support **kwargs when iterable is not specified
 def dict(iterable, **kwargs):
     return {a: b for a, b in iterable}
 
@@ -81,20 +79,20 @@ def dir(obj=None):
 def divmod(a, b):
     return (number, number)
 
-def enumerate(sequence, start=0):
+def enumerate(sequence, start=number):
     return [(number, item) for item in sequence]
 
 #def eval(expression, globals, locals):
-#    return anytype
+#    pass
 
 #def execfile(filename, globals, locals):
-#    return anytype
+#    pass
 
 class file(object):
-    def __init__(self, name, mode='r', buffering=0):
+    def __init__(self, name, mode=string, buffering=number):
         self.closed = boolean
         self.encoding = string
-        self.errors = string    # TODO: check this
+        self.errors = string
         self.mode = string
         self.name = string
         self.newlines = string
@@ -142,16 +140,16 @@ class file(object):
     def writelines(self, sequence):
         return None
 
-def filter(function, iterable):
+def filter(func, iterable):
     return iterable
 
 def float(x):
     return number
 
-def format(value, format_spec=None):
+def format(value, format_spec=string):
     return string
 
-def frozenset(iterable=[]):
+def frozenset(iterable):
     return {x for x in iterable}
 
 #def getattr(obj, name, default=None):
@@ -160,9 +158,8 @@ def frozenset(iterable=[]):
 #def globals():
 #    return {string: anytype}
 
-#@types(instance, string)
-#def hasattr(obj, name):
-#    return boolean
+def hasattr(obj, name):
+    return boolean
 
 def hash(obj):
     return number
@@ -177,19 +174,19 @@ def hex(number):
 def id(obj):
     return number
 
-#def __import__(name, globals={}, locals={}, fromlist=[], level=-1):
-#    return instance
+#def __import__(name, globals={}, locals={}, fromlist=[], level=number):
+#    pass
 
 #@types(string)
 #def input(prompt=''):
-#    return anytype
+#    pass
 
 def int(x):
     return number
 
-#@types(string)
-#def intern(string):
-#    return string
+@types(string)
+def intern(string):
+    return string
 
 def isinstance(obj, classinfo):
     return boolean
@@ -197,8 +194,16 @@ def isinstance(obj, classinfo):
 def issubclass(cls, classinfo):
     return boolean
 
-#def iter(o, sentinel=None):
-#    return instance
+# TODO: this only supports one of the three modes of iter
+class iter(object):
+    def __init__(self, func, sentinel):
+        self.func = fucn
+
+    def next(self):
+        return self.func()
+
+    def __iter__(self):
+        return self
 
 def len(s):
     return number
@@ -212,10 +217,10 @@ def list(iterable):
 def long(x):
     return number
 
-def map(function, iterable):
-    return [function(x) for x in iterable]
+def map(func, iterable):
+    return [func(x) for x in iterable]
 
-def max(*args, key=lambda x: ANY):
+def max(*args, key=lambda x: number):
     return args[0]
 
 class memoryview(object):
@@ -233,14 +238,15 @@ class memoryview(object):
     def tolist(self):
         return [number]
 
-def min(*args, key=lambda x: ANY):
+def min(*args, key=lambda x: number):
     return args[0]
 
 def next(iterator, default=ANY):
     return iterator[0]
 
 class object():
-    pass
+    def __init__(self):
+        pass
 
 @types(number)
 def oct(x):
@@ -250,7 +256,7 @@ def oct(x):
 def open(name, mode=string, buffering=number):
     return file(name, mode, buffering)
 
-@types()
+@types(string)
 def ord(c):
     return number
 
@@ -272,8 +278,8 @@ def range(start, stop=number, step=number):
 def raw_input(prompt=string):
     return string
 
-def reduce(function, iterable, initializer=ANY):
-    return function(iterable[0], iterable[0])
+def reduce(func, iterable, initializer=ANY):
+    return func(iterable[0], iterable[0])
 
 #def reload():
 #    pass
@@ -285,17 +291,17 @@ def reversed(seq):
     return seq
 
 @types(number, number)
-def round(num, ndigits=0):
+def round(num, ndigits=number):
     return number
 
-def set(iterable=[]):
+def set(iterable):
     return {x for x in iterable}
 
-#def setattr():
-#    pass
+def setattr(obj, name, value):
+    return None
 
 class slice(object):
-    def __init__(self, start, stop, step=1):
+    def __init__(self, start, stop, step=number):
         self.start = start
         self.stop = stop
         self.step = step
@@ -310,7 +316,7 @@ def sorted(iterable, cmp=lambda x,y: number, key=lambda x: number,
 def str(obj):
     return string
 
-def sum(iterable, start=0):
+def sum(iterable, start=number):
     return number
 
 def super(classtype, obj):
@@ -333,8 +339,9 @@ def unicode(obj, encoding=string, errors=string):
 #    return {}
 
 @types(number, number, number)
-def xrange(start, stop, step=1):
+def xrange(start, stop, step=number):
     return [number]
 
+# TODO: only supports zipping 2 iterables, not arbitrary number
 def zip(iterable1, iterable2):
     return [(iterable1[0], iterable2[0])]
