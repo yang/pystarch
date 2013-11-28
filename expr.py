@@ -211,7 +211,8 @@ def expression_type(node, context):
             return Undefined()
         arguments = function_type.arguments
         argument_scope = make_argument_scope(node, arguments, context)
-        return function_type.return_type(argument_scope)[0]
+        return_type, _ = function_type.return_type(argument_scope)
+        return return_type
     if token == 'Repr':    # TODO: is Repr a Str?
         return Str()
     if token == 'Num':
@@ -233,7 +234,7 @@ def expression_type(node, context):
     if token == 'Tuple':
         item_types = [recur(element) for element in node.elts]
         return Tuple(item_types)
-    raise Exception('evalute_type does not recognize ' + token)
+    raise Exception('expression_type does not recognize ' + token)
 
 
 def unit_test():

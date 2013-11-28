@@ -29,16 +29,21 @@ class FunctionEvaluator(object):
         self.body_node = body_node
         self.context = def_context
         self.cache = []
+        self.recursion_block = False
 
     def __call__(self, argument_scope):
+        if self.recursion_block:
+            return (Any(), [])
         for scope, result in self.cache:
             if scope == argument_scope:
                 return result
         self.context.begin_scope()
         self.context.merge_scope(argument_scope)
+        self.recursion_block = True
         visitor = Visitor(context=self.context)
         for stmt in self.body_node:
             visitor.visit(stmt)
+        self.recursion_block = False
         warnings = visitor.warnings()
         scope = self.context.end_scope()
         return_type = scope.get('__return__', NoneType())
@@ -282,7 +287,7 @@ class Visitor(ast.NodeVisitor):
 
     def visit_IfExp(self, node):
         self.check_type(node.test, Bool(), 'non-bool-if-condition')
-        self.consistent_types([node.body, node.orelse], 'if-else')
+        self.consistent_types(node, [node.body, node.orelse])
         self.generic_visit(node)
 
     def visit_For(self, node):
