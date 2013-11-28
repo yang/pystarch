@@ -26,12 +26,23 @@ class CallableMixin(object):
             self.arg_types, self.return_type)
 
 
-class Undefined(EqualityMixin, BasicMixin): pass
-class Any(EqualityMixin, BasicMixin): pass
-class NoneType(EqualityMixin, BasicMixin): pass
-class Bool(EqualityMixin, BasicMixin): pass
-class Num(EqualityMixin, BasicMixin): pass
-class Str(EqualityMixin, BasicMixin): pass
+class Undefined(EqualityMixin, BasicMixin):
+    pass
+
+class Any(EqualityMixin, BasicMixin):
+    pass
+
+class NoneType(EqualityMixin, BasicMixin):
+    pass
+
+class Bool(EqualityMixin, BasicMixin):
+    pass
+
+class Num(EqualityMixin, BasicMixin):
+    pass
+
+class Str(EqualityMixin, BasicMixin):
+    pass
 
 class List(EqualityMixin, ItemTypeMixin):
     def __init__(self, item_type):

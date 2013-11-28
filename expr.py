@@ -1,6 +1,9 @@
+"""This file should not make any changes to the context or try to do any
+type validation. If there is a problem with the types, it should do some
+default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from type_objects import Any, NoneType, Bool, Num, Str, List, Tuple, Set, \
-    Dict, Function, Instance, Class, Undefined
+    Dict, Function, Instance, Undefined
 
 
 def get_token(node):
@@ -19,6 +22,21 @@ def call_argtypes(call_node, context):
     if call_node.kwargs is not None:
         keyword_types['**kwargs'] = expression_type(call_node.kwargs, context)
     return types, keyword_types
+
+
+def make_argument_scope(call_node, arguments, context):
+    scope = {}
+    for name, value in zip(arguments.names, call_node.args):
+        scope[name] = expression_type(value, context)
+    for keyword in call_node.keywords:
+        if keyword.arg in arguments.names:
+            scope[keyword.arg] = expression_type(keyword.value, context)
+    if call_node.starargs is not None and arguments.vararg_name is not None:
+        scope[arguments.vararg_name] = expression_type(
+            call_node.starargs, context)
+    if call_node.kwargs is not None and arguments.kwarg_name is not None:
+        scope[arguments.kwarg_name] = expression_type(call_node.kwargs, context)
+    return scope
 
 
 # "arguments" parameter is node.args for FunctionDef or Lambda
@@ -48,8 +66,8 @@ class Arguments(object):
         self.kwarg_name = arguments.kwarg
 
     @classmethod
-    def copy_without_first_argument(klass, other_arguments):
-        arguments = klass()
+    def copy_without_first_argument(cls, other_arguments):
+        arguments = cls()
         arguments.names = other_arguments.names[1:]
         arguments.types = other_arguments.types[1:]
         arguments.default_types = other_arguments.default_types[1:]
@@ -86,7 +104,7 @@ class Arguments(object):
         kwarg = (', {0}: Dict'.format(self.kwarg_name)
             if self.kwarg_name else '')
         return (', '.join(name + ': ' + argtype for name, argtype
-            in zip(self.argnames, self.argtypes)) + vararg + kwarg)
+            in zip(self.names, self.types)) + vararg + kwarg)
 
 
 # adds assigned symbols to the current namespace, does not do validation
@@ -133,7 +151,6 @@ def assign(target, value, context, generator=False):
 def comprehension_type(elements, generators, context):
     context.begin_namespace()
     for generator in generators:
-        item_type = expression_type(generator.iter, context)
         assign(generator.target, generator.iter, context, generator=True)
     element_types = [expression_type(element, context) for element in elements]
     context.end_namespace()
@@ -187,7 +204,11 @@ def expression_type(node, context):
         return Bool()
     if token == 'Call':
         function_type = recur(node.func)
-        return (function_type.return_type if isinstance(function_type, Function) else Undefined())
+        if not isinstance(function_type, Function):
+            return Undefined()
+        arguments = function_type.arguments
+        argument_scope = make_argument_scope(node, arguments, context)
+        return function_type.return_type(argument_scope)
     if token == 'Repr':    # TODO: is Repr a Str?
         return Str()
     if token == 'Num':

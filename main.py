@@ -1,11 +1,11 @@
+# pylint: disable=invalid-name
 import sys
 import os
 import ast
-from type_objects import Any, Num, Str, List, Dict, Tuple, Instance, Class, \
+from type_objects import Any, Num, List, Dict, Tuple, Instance, Class, \
     Function, NoneType, Bool
 from imports import import_source
-from expr import get_token, expression_type, call_argtypes, Arguments, \
-    get_assignments
+from expr import expression_type, call_argtypes, Arguments, get_assignments
 from show import show_node
 from context import Context
 
@@ -24,11 +24,11 @@ class NodeWarning(object):
 
 
 class Visitor(ast.NodeVisitor):
-    def __init__(self, filepath):
+    def __init__(self, filepath, context=None):
         ast.NodeVisitor.__init__(self)
         self._filepath = filepath
         self._warnings = []
-        self._context = Context()
+        self._context = context if context is not None else Context()
 
     def scope(self):
         return self._context.get_top_scope()
@@ -139,11 +139,18 @@ class Visitor(ast.NodeVisitor):
             if (explicit_type != Any() and default_type != Any() and
                     default_type != explicit_type):
                 self.warn('default-argument-type-error', node, name)
-        self.begin_scope()
-        arguments.load_context(self._context)
-        self.generic_visit(node)
-        scope = self.end_scope()
-        return_type = scope.get('__return__', NoneType())
+        # TODO: need to run get_return_type now to check for errors since
+        # errors will not be reported by get_return_type
+        def get_return_type(argument_scope, body_node, context):
+            context.begin_scope()
+            context.merge_scope(argument_scope)
+            Visitor(self._filepath, context).visit(body_node)
+            scope = context.end_scope()
+            return scope.get('__return__', NoneType())
+        context = self._context.copy()
+        # create a closure with current context
+        return_type = lambda argument_scope: get_return_type(
+            argument_scope, node.body, context)
         function_type = Function(arguments, return_type)
         self._context.add_symbol(node.name, function_type)
 
@@ -224,7 +231,7 @@ class Visitor(ast.NodeVisitor):
 
     def visit_Delete(self, node):
         # TODO: need to support identifiers, dict items, attributes, list items
-        names = [target.id for target in node.targets]
+        #names = [target.id for target in node.targets]
         self.warn('delete', node)
         self.generic_visit(node)
 
@@ -266,7 +273,7 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_For(self, node):
-        # Python doesn't create a scope for "for", but we will 
+        # Python doesn't create a scope for "for", but we will
         # treat it as if it did because it should
         self.begin_scope()
         self.check_assign(node, node.target, node.iter, generator=True)
@@ -298,7 +305,6 @@ def main():
     filepath = sys.argv[1]
     with open(filepath) as source_file:
         source = source_file.read()
-    output = analysis(source, filepath)
     sys.stdout.write(analysis(source, filepath))
 
 

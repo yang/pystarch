@@ -128,7 +128,7 @@ class file(object):
     def seek(self, offset, whence=number):
         return None
 
-    def tell(self);
+    def tell(self):
         return number
 
     def truncate(self, size=number):
@@ -220,7 +220,7 @@ def long(x):
 def map(func, iterable):
     return [func(x) for x in iterable]
 
-def max(*args, key=lambda x: number):
+def max(*args, key=(lambda x: number)):
     return args[0]
 
 class memoryview(object):

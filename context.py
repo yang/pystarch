@@ -1,5 +1,4 @@
-from type_objects import Any, NoneType, Bool, Num, Str, List, Tuple, Set, \
-    Dict, Function, Instance, Class, Undefined
+from type_objects import NoneType, Bool
 
 # Tricky: need to support obj1.obj2.x where obj2 is an instance
 # of a class that may not be defined in the current scope
@@ -25,8 +24,14 @@ def builtin_scope():
 
 
 class Context(object):
-    def __init__(self):
-        self.scope_layers = [builtin_scope()]
+    def __init__(self, layers=None):
+        self.scope_layers = [builtin_scope()] if layers is None else layers
+
+    def copy(self):
+        """This makes a copy that won't lose scope layers when the original
+        ends scopes, but it will still share the data structure for each
+        scope."""
+        return Context([scope for scope in self.scope_layers])
 
     def begin_scope(self):
         self.scope_layers.append({})
@@ -37,8 +42,11 @@ class Context(object):
     def get_top_scope(self):
         return self.scope_layers[-1]
 
-    def add_symbol(self, name, type):
-        self.get_top_scope()[name] = type
+    def add_symbol(self, name, symbol_type):
+        self.get_top_scope()[name] = symbol_type
+
+    def merge_scope(self, scope):
+        self.get_top_scope().update(scope)
 
     def remove_symbol(self, name):
         for scope in reversed(self.scope_layers):

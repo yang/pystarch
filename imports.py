@@ -1,4 +1,4 @@
-import imp, marshal, dis, meta
+import os, imp, marshal, meta
 
 
 def pyc_source(pyc_contents):
@@ -24,13 +24,15 @@ def import_source(import_name, paths=None):
                 source = py_file.read()
             return source, module_path
         else:
+            data = module_file.read()
+            module_file.close()
             return pyc_source(data), module_path
     else:
         raise RuntimeError('Unrecognized extension: ' + module_path)
 
 
 def unit_test():
-    print import_code('re')
+    print import_source('re')
 
 
 if __name__ == '__main__':
