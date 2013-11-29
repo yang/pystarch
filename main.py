@@ -8,7 +8,7 @@ from imports import import_source
 from expr import expression_type, call_argtypes, Arguments, get_assignments, \
     AssignError
 from show import show_node
-from context import Context
+from context import Context, ExtendedContext
 
 
 class NodeWarning(object):
@@ -76,7 +76,7 @@ class Visitor(ast.NodeVisitor):
         self._warnings.append(warning)
 
     def expr_type(self, node):
-        return expression_type(node, self._context)
+        return expression_type(node, ExtendedContext(self._context))
 
     def consistent_types(self, root_node, nodes):
         types = [self.expr_type(node) for node in nodes]
@@ -117,8 +117,8 @@ class Visitor(ast.NodeVisitor):
 
     def check_assign(self, node, target, value, generator=False):
         try:
-            assignments = get_assignments(target, value, self._context,
-                generator=generator)
+            assignments = get_assignments(target, value,
+                ExtendedContext(self._context), generator=generator)
         except AssignError:
             self.warn('assignment-error', node)
             return
@@ -161,7 +161,8 @@ class Visitor(ast.NodeVisitor):
         self._context.add_symbol(node.name, class_type)
 
     def visit_FunctionDef(self, node):
-        arguments = Arguments(node.args, self._context, node.decorator_list)
+        arguments = Arguments(node.args, ExtendedContext(self._context),
+            node.decorator_list)
         specified_types = zip(arguments.names,
             arguments.explicit_types, arguments.default_types)
         for name, explicit_type, default_type in specified_types:
@@ -191,7 +192,8 @@ class Visitor(ast.NodeVisitor):
             return self.warn('undefined-function', node, node.func.id)
         if not func_type.arguments:
             return self.warn('not-a-function', node, node.func.id)
-        argtypes, kwargtypes = call_argtypes(node, self._context)
+        argtypes, kwargtypes = call_argtypes(node,
+            ExtendedContext(self._context))
         # make sure all required arguments are specified
         minargs = func_type.arguments.min_count
         required_kwargs = func_type.arguments.names[len(argtypes):minargs]

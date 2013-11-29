@@ -2,8 +2,6 @@ http://docs.python.org/2/library/compiler.html
 
 High Priority
 =============
-Make a const wrapper to Context to pass to expr.py to guarantee it does not
-    get modified, but can still be read from
 Visit function body in visit_Call
 Fix slice: can mean indexing into list
 
