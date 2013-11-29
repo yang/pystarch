@@ -25,6 +25,7 @@ def call_argtypes(call_node, context):
     return types, keyword_types
 
 
+# context is the context at call-time, not definition-time
 def make_argument_scope(call_node, arguments, context):
     scope = {}
     for name, value in zip(arguments.names, call_node.args):

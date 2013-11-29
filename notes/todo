@@ -1,7 +1,6 @@
 
 High Priority
 =============
-Visit function body in visit_Call
 Fix Compare: in, not in
 Fix BinOp in main.py: allow multiplication of string with integer,
     addition of strings, lists, tuples
@@ -42,6 +41,8 @@ Cache results of imports for speed
 Optimize function return type evaluation when return type can be determined
     while processing the definition
 
-Maybe Never
+Limitations
 ===========
 Custom operator overloading with things like __getitem__ or __add__ don't work
+Tuple indices must be literal numbers
+    - could cheat if all types in the tuple are the same

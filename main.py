@@ -6,7 +6,7 @@ from type_objects import Any, Num, List, Dict, Tuple, Instance, Class, \
     Function, NoneType, Bool
 from imports import import_source
 from expr import expression_type, call_argtypes, Arguments, get_assignments, \
-    AssignError
+    AssignError, make_argument_scope
 from show import show_node
 from context import Context, ExtendedContext
 
@@ -25,22 +25,26 @@ class NodeWarning(object):
 
 
 class FunctionEvaluator(object):
-    def __init__(self, body_node, def_context):
+    def __init__(self, filepath, body_node, def_context):
+        self.filepath = filepath
         self.body_node = body_node
         self.context = def_context
         self.cache = []
         self.recursion_block = False
 
-    def __call__(self, argument_scope):
+    def __call__(self, argument_scope, clear_warnings=False):
         if self.recursion_block:
             return (Any(), [])
-        for scope, result in self.cache:
+        for i, item in enumerate(self.cache):
+            scope, result = item
             if scope == argument_scope:
+                if clear_warnings:
+                    self.cache[i] = (scope, (result[0], []))
                 return result
         self.context.begin_scope()
         self.context.merge_scope(argument_scope)
         self.recursion_block = True
-        visitor = Visitor(context=self.context)
+        visitor = Visitor(self.filepath, self.context)
         for stmt in self.body_node:
             visitor.visit(stmt)
         self.recursion_block = False
@@ -48,7 +52,8 @@ class FunctionEvaluator(object):
         scope = self.context.end_scope()
         return_type = scope.get('__return__', NoneType())
         result = (return_type, warnings)
-        self.cache.append((argument_scope, result))
+        cache_result = (return_type, []) if clear_warnings else result
+        self.cache.append((argument_scope, cache_result))
         return result
 
 
@@ -169,7 +174,8 @@ class Visitor(ast.NodeVisitor):
             if (explicit_type != Any() and default_type != Any() and
                     default_type != explicit_type):
                 self.warn('default-argument-type-error', node, name)
-        return_type = FunctionEvaluator(node.body, self._context.copy())
+        return_type = FunctionEvaluator(self._filepath, node.body,
+            self._context.copy())
         function_type = Function(arguments, return_type)
         self._context.add_symbol(node.name, function_type)
 
@@ -192,6 +198,7 @@ class Visitor(ast.NodeVisitor):
             return self.warn('undefined-function', node, node.func.id)
         if not func_type.arguments:
             return self.warn('not-a-function', node, node.func.id)
+
         argtypes, kwargtypes = call_argtypes(node,
             ExtendedContext(self._context))
         # make sure all required arguments are specified
@@ -219,6 +226,14 @@ class Visitor(ast.NodeVisitor):
                     self.warn('extra-keyword', node, name)
                 else:
                     self.check_argument_type(node, name, kwargtype, [deftype])
+
+        # Add warnings from function body (probably already cached)
+        if isinstance(func_type, Function): # skip class constructors
+            argument_scope = make_argument_scope(node, func_type.arguments,
+                ExtendedContext(self._context))
+            return_type, warnings = func_type.return_type(argument_scope, True)
+            self._warnings.extend(warnings)
+
         self.generic_visit(node)
 
     def visit_Return(self, node):
