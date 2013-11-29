@@ -273,7 +273,7 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Index(self, node):
-        self.check_type(node.value, Num(), 'non-num-index')
+        # index can mean list index or dict lookup, so could be any type
         self.generic_visit(node)
 
     def visit_BinOp(self, node):

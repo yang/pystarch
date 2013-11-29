@@ -4,6 +4,7 @@ default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from type_objects import Any, NoneType, Bool, Num, Str, List, Tuple, Set, \
     Dict, Function, Instance, Undefined
+from evaluate import static_evaluate
 
 
 def get_token(node):
@@ -225,7 +226,26 @@ def expression_type(node, context):
             return Undefined()
         return value_type.attributes[node.attr]
     if token == 'Subscript':
-        return recur(node.value)
+        value_type = recur(node.value)
+        if get_token(node.slice) == 'Index':
+            if isinstance(value_type, Tuple):
+                try:
+                    index = static_evaluate(node.slice.value, context)
+                except EvaluateError:
+                    return Undefined()
+                if not isinstance(index, int):
+                    return Undefined()
+                if not (0 <= index < len(value_type.item_types)):
+                    return Undefined()
+                return value_type.item_types[index]
+            elif isinstance(value_type, List):
+                return value_type.item_type
+            elif isinstance(value_type, Dict):
+                return value_type.value_type
+            else:
+                return Undefined()
+        else:
+            return value_type
     if token == 'Name':
         return context.get_type(node.id, Undefined())
     if token == 'List':
