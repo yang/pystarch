@@ -1,9 +1,6 @@
 
 High Priority
 =============
-Fix BinOp in main.py: allow multiplication of string with integer,
-    addition of strings, lists, tuples
-
 Add types of builtins to initial scope
 Support calling functions that are defined later (needed for mutual recursion)
 Return Any type from builtin functions that are not determinate

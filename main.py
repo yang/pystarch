@@ -3,7 +3,7 @@ import sys
 import os
 import ast
 from type_objects import Any, Num, List, Dict, Tuple, Instance, Class, \
-    Function, NoneType, Bool
+    Function, NoneType, Bool, Str
 from imports import import_source
 from expr import expression_type, call_argtypes, Arguments, get_assignments, \
     AssignError, make_argument_scope, get_token
@@ -306,14 +306,27 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_BinOp(self, node):
-        # TODO: allow Num and Str with '*'
-        self.check_type(node.left, Num(), 'non-num-op')
-        self.check_type(node.right, Num(), 'non-num-op')
+        operator = get_token(node.op)
+        types = {self.expr_type(node.left), self.expr_type(node.right)}
+        if operator == 'Mult':
+            if types != {Num()} and types != {Num(), Str()}:
+                self.warn('invalid-types', node)
+        elif operator == 'Add':
+            if len(types) > 1:
+                self.warn('inconsistent-types', node)
+            elif not isinstance(iter(types).next(), (Num, Str, List, Tuple)):
+                self.warn('invalid-type', node)
+        else:
+            self.check_type(node.left, Num(), 'non-num-operand')
+            self.check_type(node.right, Num(), 'non-num-operand')
         self.generic_visit(node)
 
     def visit_UnaryOp(self, node):
-        # TODO: Bool() type for "not" operator
-        self.check_type(node.operand, Num(), 'non-num-op')
+        operator = get_token(node.op)
+        if operator == 'Not':
+            self.check_type(node.operand, Bool(), 'non-bool-operand')
+        else:
+            self.check_type(node.operand, Num(), 'non-num-operand')
         self.generic_visit(node)
 
     def visit_IfExp(self, node):
