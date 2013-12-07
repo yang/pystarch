@@ -67,6 +67,9 @@ class Arguments(object):
         self.vararg_name = arguments.vararg
         self.kwarg_name = arguments.kwarg
 
+    def __len__(self):
+        return len(self.names)
+
     @classmethod
     def copy_without_first_argument(cls, other_arguments):
         arguments = cls()

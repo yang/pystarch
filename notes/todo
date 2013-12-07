@@ -40,6 +40,7 @@ Implement visit_Delete and actually remove items from scope
 Cache results of imports for speed
 Optimize function return type evaluation when return type can be determined
     while processing the definition
+Warn when function is never called if it starts with an underscore
 
 Limitations
 ===========
