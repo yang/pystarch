@@ -336,6 +336,16 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
         self.end_scope()
 
+    def visit_List(self, node):
+        self.consistent_types(node, node.elts)
+
+    def visit_Dict(self, node):
+        self.consistent_types(node, node.keys)
+        self.consistent_types(node, node.values)
+
+    def visit_Set(self, node):
+        self.consistent_types(node, node.elts)
+
 
 def dump_scope(scope):
     return '\n'.join([name + ' ' + str(typ) for name, typ in scope.items()])
