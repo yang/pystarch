@@ -7,6 +7,10 @@ class EqualityMixin(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __hash__(self):
+        return hash(str(self))
+
+
 class BasicMixin(object):
     def __str__(self):
         return self.__class__.__name__

@@ -6,7 +6,7 @@ from type_objects import Any, Num, List, Dict, Tuple, Instance, Class, \
     Function, NoneType, Bool
 from imports import import_source
 from expr import expression_type, call_argtypes, Arguments, get_assignments, \
-    AssignError, make_argument_scope
+    AssignError, make_argument_scope, get_token
 from show import show_node
 from context import Context, ExtendedContext
 
@@ -103,13 +103,14 @@ class Visitor(ast.NodeVisitor):
         if previous_type is not None:
             if previous_type != new_type:
                 details = '{0} -> {1}'.format(previous_type, new_type)
-                if previous_type == 'None' or new_type == 'None':
+                if (instance(previous_type, NoneType)
+                        or isinstance(new_type, NoneType)):
                     self.warn('maybe-type', node, details)
                 else:
                     self.warn('type-change', node, details)
             if not allow_reassign:
                 self.warn('reassignment', node)
-            if allow_none_conversion and new_type == 'None':
+            if allow_none_conversion and isinstance(new_type, NoneType):
                 return      # don't override non-none with none
         self._context.add_symbol(name, new_type)
 
@@ -257,7 +258,20 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Compare(self, node):
-        self.consistent_types(node, [node.left] + node.comparators)
+        if any(get_token(op) in ['In', 'NotIn'] for op in node.ops):
+            if len(node.ops) > 1 or len(node.comparators) > 1:
+                self.warn('in-operator-chaining', node)
+            else:
+                rhs_type = self.expr_type(node.comparators[0])
+                if isinstance(rhs_type, List):
+                    self.consistent_types(node,
+                        [node.left, rhs_type.item_type])
+                elif isinstance(rhs_type, Dict):
+                    self.consistent_types(node, [node.left, rhs_type.key_type])
+                else:
+                    self.warn('in-operator-argument-not-list-or-dict', node)
+        else:
+            self.consistent_types(node, [node.left] + node.comparators)
         self.generic_visit(node)
 
     def visit_BoolOp(self, node):
