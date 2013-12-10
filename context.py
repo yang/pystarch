@@ -62,7 +62,8 @@ class Context(object):
 
     def __str__(self):
         return '\n'.join([
-            '\n'.join([name + ' ' + str(typ) for name, typ in layer.items()])
+            '\n'.join([name + ' ' + str(layer[name])
+                for name in sorted(layer.keys())])
             for layer in self._scope_layers])
 
 

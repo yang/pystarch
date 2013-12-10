@@ -1,0 +1,7 @@
+a List[Num]
+b Num
+c Tuple[Num,Str,Dict[Str,Num]]
+d Num
+e Str
+f Dict[Str,Num]
+g Num

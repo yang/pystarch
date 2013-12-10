@@ -1,3 +1,5 @@
+f Function[a: Any, b: Any, c: Any, d: Num, e: Str, f: NoneType, args: Tuple, kwargs: Dict]
+
 testcases/func.py:7 missing-argument "f" (a)
 testcases/func.py:7 missing-argument "f" (b)
 testcases/func.py:7 missing-argument "f" (c)

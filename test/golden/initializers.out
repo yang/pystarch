@@ -1,0 +1,11 @@
+x1 List[Num]
+x2 List[Num]
+x3 Set[Num]
+x4 Set[Num]
+x5 Dict[Str,Num]
+x6 Dict[Str,Num]
+
+testcases/initializers.py:4 inconsitent-types "List" (Num, Str, Num)
+testcases/initializers.py:6 inconsitent-types "Set" (Num, Str, Num)
+testcases/initializers.py:8 inconsitent-types "Dict" (Str, Num)
+testcases/initializers.py:8 inconsitent-types "Dict" (Num, Str)

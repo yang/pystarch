@@ -1,7 +1,10 @@
 
 High Priority
 =============
+Type of [] + [] and (1,2) + (3,4) is Num
 Add types of builtins to initial scope
+Fix unit test system
+Use a code coverage tool to make sure everything is covered by tests
 Support calling functions that are defined later (needed for mutual recursion)
 Return Any type from builtin functions that are not determinate
 

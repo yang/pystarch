@@ -103,7 +103,7 @@ class Visitor(ast.NodeVisitor):
         if previous_type is not None:
             if previous_type != new_type:
                 details = '{0} -> {1}'.format(previous_type, new_type)
-                if (instance(previous_type, NoneType)
+                if (isinstance(previous_type, NoneType)
                         or isinstance(new_type, NoneType)):
                     self.warn('maybe-type', node, details)
                 else:
@@ -138,6 +138,7 @@ class Visitor(ast.NodeVisitor):
     def visit_Module(self, node):
         self.begin_scope()
         self.generic_visit(node)
+        # don't end scope so that caller can see what is in the scope
 
     def visit_Import(self, node):
         source_dir = os.path.abspath(os.path.dirname(self._filepath))
@@ -197,7 +198,7 @@ class Visitor(ast.NodeVisitor):
         func_type = self._context.get_type(node.func.id)
         if not func_type:
             return self.warn('undefined-function', node, node.func.id)
-        if not func_type.arguments:
+        if not isinstance(func_type, Function):
             return self.warn('not-a-function', node, node.func.id)
 
         argtypes, kwargtypes = call_argtypes(node,
@@ -361,20 +362,24 @@ class Visitor(ast.NodeVisitor):
 
 
 def dump_scope(scope):
-    return '\n'.join([name + ' ' + str(typ) for name, typ in scope.items()])
+    end = '\n' if scope else ''
+    return '\n'.join([name + ' ' + str(scope[name])
+        for name in sorted(scope.keys())]) + end
 
 
 def analyze(source, filepath=None):
     tree = ast.parse(source, filepath)
     visitor = Visitor(filepath)
     visitor.visit(tree)
-    print(dump_scope(visitor.scope()))
-    return visitor.warnings()
+    return visitor.warnings(), visitor.scope()
 
 
 def analysis(source, filepath=None):
-    warnings = analyze(source, filepath)
-    return ''.join([str(warning) + '\n' for warning in warnings])
+    warnings, scope = analyze(source, filepath)
+    warning_output = ''.join([str(warning) + '\n' for warning in warnings])
+    scope_output = dump_scope(scope)
+    separator = '\n' if warning_output and scope_output else ''
+    return scope_output + separator + warning_output
 
 
 def main():
