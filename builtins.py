@@ -220,8 +220,8 @@ def long(x):
 def map(func, iterable):
     return [func(x) for x in iterable]
 
-def max(*args, key=(lambda x: number)):
-    return args[0]
+def max(arg1, arg2, *args, **kwargs):
+    return arg1
 
 class memoryview(object):
     def __init__(self, obj):
@@ -238,8 +238,8 @@ class memoryview(object):
     def tolist(self):
         return [number]
 
-def min(*args, key=lambda x: number):
-    return args[0]
+def min(arg1, arg2, *args, **kwargs):
+    return arg1
 
 def next(iterator, default=ANY):
     return iterator[0]
@@ -264,8 +264,10 @@ def ord(c):
 def pow(x, y, z=number):
     return number
 
-def print(*objects, sep=string, end=string, file=file()):
+"""
+def print(*objects, **kwargs):
     return None
+"""
 
 #def property():
 #    pass

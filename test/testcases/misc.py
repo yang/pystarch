@@ -60,6 +60,9 @@ instance = MyClass()
 x = instance.class_attr
 y = instance.another_method('a')
 
+v = func()
+w = another_function()
+z = func2()
 
 for i in (1,2,3):
     i += 1

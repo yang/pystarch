@@ -7,7 +7,8 @@ from difflib import unified_diff
 
 def main():
     filenames = os.listdir('testcases')
-    for filename in filenames:
+    python_filenames = [x for x in filenames if x.endswith('.py')]
+    for filename in python_filenames:
         name, _ = os.path.splitext(filename)
         filepath = os.path.join('testcases', filename)
         with open(filepath) as source_file:

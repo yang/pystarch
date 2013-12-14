@@ -67,12 +67,22 @@ class FunctionEvaluator(object):
         return result
 
 
+def builtin_context():
+    filename = 'builtins.py'
+    context = Context()
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(this_dir, filename)) as builtins_file:
+        source = builtins_file.read()
+    _, _ = analyze(source, filename, context)
+    return context
+
+
 class Visitor(ast.NodeVisitor):
     def __init__(self, filepath='', context=None):
         ast.NodeVisitor.__init__(self)
         self._filepath = filepath
         self._warnings = []
-        self._context = context if context is not None else Context()
+        self._context = context if context is not None else builtin_context()
 
     def scope(self):
         return self._context.get_top_scope()
@@ -172,9 +182,7 @@ class Visitor(ast.NodeVisitor):
         for alias in node.names:
             name = alias.name
             source, filepath = import_source(name, [source_dir])
-            import_visitor = Visitor(filepath)
-            import_visitor.visit(ast.parse(source))
-            scope = import_visitor.scope()
+            _, scope = analyze(source, filepath)    # ignore warnings
             import_type = Instance('__import__', scope)
             self._context.add_symbol(name, import_type)
 
@@ -394,9 +402,9 @@ def dump_scope(scope):
         for name in sorted(scope.keys())]) + end
 
 
-def analyze(source, filepath=None):
+def analyze(source, filepath=None, context=None):
     tree = ast.parse(source, filepath)
-    visitor = Visitor(filepath)
+    visitor = Visitor(filepath, context)
     visitor.visit(tree)
     return visitor.warnings(), visitor.scope()
 

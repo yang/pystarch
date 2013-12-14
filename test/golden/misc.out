@@ -1,0 +1,46 @@
+MyClass Class()
+a List(Num)
+another_function Function()
+b Num
+c Num
+func Function()
+func2 Function()
+globe Num
+instance Undefined
+my_function Function(sam: Function(x: Any), maxi: Function(obj: Any))
+testimport Instance(__import__)
+types Function(, args: Tuple, kwargs: Dict)
+v List(NoneType)
+w Maybe(Num)
+x Undefined
+y Undefined
+z Dict(NoneType,NoneType)
+
+testcases/misc.py:54 assignment-error "Tuple = ..."
+testcases/misc.py:55 type-change "a = ..." (Num -> List(Num))
+testcases/misc.py:55 reassignment "a = ..."
+testcases/misc.py:57 reassignment "c = ..."
+testcases/misc.py:58 missing-argument "my_function" (sam)
+testcases/misc.py:58 missing-argument "my_function" (maxi)
+testcases/misc.py:22 reassignment "bob = ..."
+testcases/misc.py:22 inconsistent-types "Add"
+testcases/misc.py:22 undefined "sam"
+testcases/misc.py:23 reassignment "globe = ..."
+testcases/misc.py:59 not-a-function "MyClass" (MyClass)
+testcases/misc.py:37 type-change "alice = ..." (Num -> Str)
+testcases/misc.py:37 reassignment "alice = ..."
+testcases/misc.py:38 type-change "Return" (List(NoneType) -> Str)
+testcases/misc.py:43 inconsitent-types "Eq" (Str, List(Num))
+testcases/misc.py:45 inconsitent-types "Is" (Str, NoneType)
+testcases/misc.py:49 reassignment "alice = ..."
+testcases/misc.py:50 type-change "alice = ..." (Str -> Num)
+testcases/misc.py:50 reassignment "alice = ..."
+testcases/misc.py:28 missing-argument "my_function" (sam)
+testcases/misc.py:28 missing-argument "my_function" (maxi)
+testcases/misc.py:30 inconsitent-types "Eq" (Str, Num)
+testcases/misc.py:30 missing-argument "my_function" (sam)
+testcases/misc.py:30 missing-argument "my_function" (maxi)
+testcases/misc.py:68 reassignment "i = ..."
+testcases/misc.py:71 type-change "z = ..." (Num -> Dict(NoneType,NoneType))
+testcases/misc.py:71 reassignment "z = ..."
+builtins.py:257 not-a-function "file" (file)
