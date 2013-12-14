@@ -4,7 +4,7 @@ default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from type_objects import Any, NoneType, Bool, Num, Str, List, Tuple, Set, \
     Dict, Function, Instance, Undefined, Maybe
-from evaluate import static_evaluate
+from evaluate import static_evaluate, EvaluateError
 
 
 def get_token(node):
@@ -69,6 +69,9 @@ class Arguments(object):
 
     def __len__(self):
         return len(self.names)
+
+    def __getitem__(self, index):
+        return zip(self.names, self.types)[index]
 
     @classmethod
     def copy_without_first_argument(cls, other_arguments):

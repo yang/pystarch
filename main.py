@@ -3,7 +3,7 @@ import sys
 import os
 import ast
 from type_objects import Any, Num, List, Dict, Tuple, Instance, Class, \
-    Function, NoneType, Bool, Str
+    Function, NoneType, Bool, Str, Maybe
 from imports import import_source
 from expr import expression_type, call_argtypes, Arguments, get_assignments, \
     AssignError, make_argument_scope, get_token
@@ -97,29 +97,41 @@ class Visitor(ast.NodeVisitor):
         if expr_type not in types + (Any(),):
             self.warn(category, node)
 
-    def check_assign_name_type(self, node, name, new_type,
-            allow_reassign=False, allow_none_conversion=False):
+    def check_return(self, node, return_type):
+        name = '__return__'
+        previous_type = self._context.get_type(name)
+        if previous_type is None:
+            self._context.add_symbol(name, return_type)
+            return
+        details = '{0} -> {1}'.format(previous_type, return_type)
+        if isinstance(return_type, NoneType):
+            if not isinstance(previous_type, (NoneType, Maybe)):
+                self._context.add_symbol(name, Maybe(previous_type))
+        elif isinstance(return_type, Maybe):
+            if not isinstance(previous_type, NoneType):
+                if return_type != previous_type:
+                    self.warn('type-change', node, details)
+        else:
+            if isinstance(previous_type, NoneType):
+                self._context.add_symbol(name, Maybe(return_type))
+            elif isinstance(previous_type, Maybe):
+                if return_type != previous_type.subtype:
+                    self.warn('type-change', node, details)
+            elif return_type != previous_type:
+                self.warn('type-change', node, details)
+
+    def check_assign_name_type(self, node, name, new_type):
         previous_type = self._context.get_type(name)
         if previous_type is not None:
             if previous_type != new_type:
                 details = '{0} -> {1}'.format(previous_type, new_type)
-                if (isinstance(previous_type, NoneType)
-                        or isinstance(new_type, NoneType)):
-                    self.warn('maybe-type', node, details)
-                else:
-                    self.warn('type-change', node, details)
-            if not allow_reassign:
-                self.warn('reassignment', node)
-            if allow_none_conversion and isinstance(new_type, NoneType):
-                return      # don't override non-none with none
+                self.warn('type-change', node, details)
+            self.warn('reassignment', node)
         self._context.add_symbol(name, new_type)
 
-    def check_assign_name(self, node, name, value, allow_reassign=False,
-            allow_none_conversion=False):
+    def check_assign_name(self, node, name, value):
         value_type = self.expr_type(value)
-        self.check_assign_name_type(node, name, value_type,
-            allow_reassign=allow_reassign,
-            allow_none_conversion=allow_none_conversion)
+        self.check_assign_name_type(node, name, value_type)
 
     def check_assign(self, node, target, value, generator=False):
         try:
@@ -239,14 +251,13 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Return(self, node):
-        self.check_assign_name(node, '__return__', node.value,
-            allow_reassign=True, allow_none_conversion=True)
+        return_type = self.expr_type(node.value)
+        self.check_return(node, return_type)
         self.generic_visit(node)
 
     def visit_Yield(self, node):
         yield_type = self.expr_type(node).item_type
-        self.check_assign_name_type(node, '__return__', yield_type,
-            allow_reassign=True, allow_none_conversion=True)
+        self.check_return(node, yield_type)
         self.generic_visit(node)
 
     def visit_Assign(self, node):
