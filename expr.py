@@ -178,8 +178,14 @@ def expression_type(node, context):
     if token == 'BoolOp':
         return recur(node.values[0])
     if token == 'BinOp':
-        return Str() if (get_token(node.op) in ['Add', 'Mult']
-            and Str() in [recur(node.left), recur(node.right)]) else Num()
+        types = [recur(node.left), recur(node.right)]
+        token = get_token(node.op)
+        if token == 'Mult' and set(types) == {Num(), Str()}:
+            return Str()
+        if token == 'Add' and all(isinstance(x, Tuple) for x in types):
+            item_types = types[0].item_types + types[1].item_types
+            return Tuple(item_types)
+        return iter(types).next()
     if token == 'UnaryOp':
         return Bool() if get_token(node.op) == 'Not' else Num()
     if token == 'Lambda':

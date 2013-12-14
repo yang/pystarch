@@ -314,7 +314,8 @@ class Visitor(ast.NodeVisitor):
                 self.warn('invalid-types', node)
         elif operator == 'Add':
             if len(types) > 1:
-                self.warn('inconsistent-types', node)
+                if not all(isinstance(x, Tuple) for x in types):
+                    self.warn('inconsistent-types', node)
             elif not isinstance(iter(types).next(), (Num, Str, List, Tuple)):
                 self.warn('invalid-type', node)
         else:
