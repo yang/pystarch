@@ -1,7 +1,7 @@
-x01 List[Num]
+x01 List(Num)
 x02 Num
-x03 Tuple[Num,Str,Dict[Str,Num]]
+x03 Tuple(Num,Str,Dict(Str,Num))
 x04 Num
 x05 Str
-x06 Dict[Str,Num]
+x06 Dict(Str,Num)
 x07 Num

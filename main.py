@@ -86,7 +86,7 @@ class Visitor(ast.NodeVisitor):
     def consistent_types(self, root_node, nodes):
         types = [self.expr_type(node) for node in nodes]
         # TODO: make another warning that allows nonetype
-        if len(set(types)) > 1:
+        if len(set(types) - {Any()}) > 1:
             details = ', '.join([str(x) for x in types])
             self.warn('inconsitent-types', root_node, details)
 

@@ -1,16 +1,16 @@
 x01 Str
 x02 Str
 x03 Str
-x04 List[NoneType]
+x04 List(NoneType)
 x05 Bool
 x06 Bool
 x07 Bool
 x08 Num
 x09 Str
 x10 Str
-x11 List[NoneType]
-x12 Tuple[Num,Str,Str,Num]
-x13 Tuple[Num,Num,Num,Num]
+x11 List(NoneType)
+x12 Tuple(Num,Str,Str,Num)
+x13 Tuple(Num,Num,Num,Num)
 
 testcases/operators.py:2 invalid-types "Mult"
 testcases/operators.py:4 invalid-types "Mult"

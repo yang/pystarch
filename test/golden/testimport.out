@@ -1,1 +1,1 @@
-imported Dict[NoneType,NoneType]
+imported Dict(NoneType,NoneType)

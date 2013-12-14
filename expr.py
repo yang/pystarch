@@ -3,7 +3,7 @@ type validation. If there is a problem with the types, it should do some
 default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from type_objects import Any, NoneType, Bool, Num, Str, List, Tuple, Set, \
-    Dict, Function, Instance, Undefined
+    Dict, Function, Instance, Undefined, Maybe
 from evaluate import static_evaluate
 
 
@@ -191,7 +191,13 @@ def expression_type(node, context):
     if token == 'Lambda':
         return Function(Arguments(node.args, context), recur(node.body))
     if token == 'IfExp':
-        return recur(node.body)
+        body_type = recur(node.body)
+        orelse_type = recur(node.orelse)
+        if isinstance(orelse_type, NoneType):
+            return Maybe(body_type)
+        if isinstance(body_type, NoneType):
+            return Maybe(orelse_type)
+        return body_type
     if token == 'Dict':
         key_type = recur(node.keys[0]) if len(node.keys) > 0 else NoneType()
         value_type = (recur(node.values[0]) if len(node.values) > 0

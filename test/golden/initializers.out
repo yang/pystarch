@@ -1,9 +1,9 @@
-x01 List[Num]
-x02 List[Num]
-x03 Set[Num]
-x04 Set[Num]
-x05 Dict[Str,Num]
-x06 Dict[Str,Num]
+x01 List(Num)
+x02 List(Num)
+x03 Set(Num)
+x04 Set(Num)
+x05 Dict(Str,Num)
+x06 Dict(Str,Num)
 
 testcases/initializers.py:2 inconsitent-types "List" (Num, Str, Num)
 testcases/initializers.py:4 inconsitent-types "Set" (Num, Str, Num)
