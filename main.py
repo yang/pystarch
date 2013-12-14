@@ -11,6 +11,16 @@ from show import show_node
 from context import Context, ExtendedContext
 
 
+def first_type(types):
+    for typ in types:
+        if isinstance(typ, Maybe):
+            return typ.subtype
+        elif isinstance(typ, NoneType):
+            continue
+        return typ
+    return NoneType
+
+
 class NodeWarning(object):
     def __init__(self, filepath, category, node, details=None):
         self.filepath = filepath
@@ -83,12 +93,17 @@ class Visitor(ast.NodeVisitor):
     def expr_type(self, node):
         return expression_type(node, ExtendedContext(self._context))
 
-    def consistent_types(self, root_node, nodes):
+    def consistent_types(self, root_node, nodes, allow_maybe=False):
         types = [self.expr_type(node) for node in nodes]
-        # TODO: make another warning that allows nonetype
-        if len(set(types) - {Any()}) > 1:
-            details = ', '.join([str(x) for x in types])
-            self.warn('inconsitent-types', root_node, details)
+        non_any_types = [x for x in types if not x == Any()]
+        base_type = first_type(non_any_types)
+        options = ([base_type, Maybe(base_type), NoneType()]
+                    if allow_maybe else [base_type])
+        for typ in non_any_types:
+            if not any(typ == x for x in options):
+                details = ', '.join([str(x) for x in types])
+                self.warn('inconsitent-types', root_node, details)
+                return
 
     def check_type(self, node, types, category):
         if not isinstance(types, tuple):
@@ -344,7 +359,7 @@ class Visitor(ast.NodeVisitor):
 
     def visit_IfExp(self, node):
         self.check_type(node.test, Bool(), 'non-bool-if-condition')
-        self.consistent_types(node, [node.body, node.orelse])
+        self.consistent_types(node, [node.body, node.orelse], allow_maybe=True)
         self.generic_visit(node)
 
     def visit_For(self, node):

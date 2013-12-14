@@ -197,9 +197,15 @@ def expression_type(node, context):
         body_type = recur(node.body)
         orelse_type = recur(node.orelse)
         if isinstance(orelse_type, NoneType):
-            return Maybe(body_type)
+            if isinstance(body_type, Maybe):
+                return body_type
+            else:
+                return Maybe(body_type)
         if isinstance(body_type, NoneType):
-            return Maybe(orelse_type)
+            if isinstance(orelse_type, Maybe):
+                return orelse_type
+            else:
+                return Maybe(orelse_type)
         return body_type
     if token == 'Dict':
         key_type = recur(node.keys[0]) if len(node.keys) > 0 else NoneType()

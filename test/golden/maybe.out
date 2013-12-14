@@ -1,0 +1,6 @@
+a Maybe(Num)
+b Maybe(Num)
+c Maybe(Num)
+f Function(a: Any)
+g Function(a: Any)
+h Function(a: Any)
