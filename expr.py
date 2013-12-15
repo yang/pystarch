@@ -118,6 +118,7 @@ class Arguments(object):
 class AssignError(RuntimeError):
     pass
 
+
 # adds assigned symbols to the current namespace, does not do validation
 def get_assignments(target, value, context, generator=False):
     value_type = expression_type(value, context)
@@ -159,10 +160,14 @@ def assign(target, value, context, generator=False):
         context.add_symbol(name, assigned_type)
 
 
-def comprehension_type(elements, generators, context):
-    context.begin_scope()
+def assign_generators(generators, context):
     for generator in generators:
         assign(generator.target, generator.iter, context, generator=True)
+
+
+def comprehension_type(elements, generators, context):
+    context.begin_scope()
+    assign_generators(generators, context)
     element_types = [expression_type(element, context) for element in elements]
     context.end_scope()
     return element_types

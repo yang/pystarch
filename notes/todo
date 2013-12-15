@@ -1,7 +1,6 @@
 
 High Priority
 =============
-Fix list comprehensions (variables are undefined)
 Fix recursion
 Use a code coverage tool to make sure everything is covered by tests
 Support calling functions that are defined later (needed for mutual recursion)

@@ -6,7 +6,7 @@ from type_objects import Any, Num, List, Dict, Tuple, Instance, Class, \
     Function, NoneType, Bool, Str, Maybe
 from imports import import_source
 from expr import expression_type, call_argtypes, Arguments, get_assignments, \
-    AssignError, make_argument_scope, get_token
+    AssignError, make_argument_scope, get_token, assign_generators
 from show import show_node
 from context import Context, ExtendedContext
 
@@ -404,6 +404,30 @@ class Visitor(ast.NodeVisitor):
 
     def visit_Set(self, node):
         self.consistent_types(node, node.elts)
+
+    def visit_ListComp(self, node):
+        self.begin_scope()
+        assign_generators(node.generators, self._context)
+        self.generic_visit(node)
+        self.end_scope()
+
+    def visit_DictComp(self, node):
+        self.begin_scope()
+        assign_generators(node.generators, self._context)
+        self.generic_visit(node)
+        self.end_scope()
+
+    def visit_SetComp(self, node):
+        self.begin_scope()
+        assign_generators(node.generators, self._context)
+        self.generic_visit(node)
+        self.end_scope()
+
+    def visit_GeneratorExp(self, node):
+        self.begin_scope()
+        assign_generators(node.generators, self._context)
+        self.generic_visit(node)
+        self.end_scope()
 
 
 def dump_scope(scope):
