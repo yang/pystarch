@@ -1,11 +1,11 @@
 
 High Priority
 =============
-Allow "is None" and "is not None" for maybe type
+Fix list comprehensions (variables are undefined)
+Fix recursion
 Use a code coverage tool to make sure everything is covered by tests
 Support calling functions that are defined later (needed for mutual recursion)
 Return Any type from builtin functions that are not determinate
-Check that function return values are not discarded
 
 Imports
 =======
@@ -31,6 +31,12 @@ Process self.x into object namespace
     the namespace from the ClassDef and a function "<Class>" with
     return type "Object[<Class>]" and arguments from the __init__ function
 Check that __init__ takes at least one argument
+
+Medium Priority
+===============
+Check that function return values are not discarded
+Unwrap maybe in if-else branches
+Unwrap maybe in comprehensions with "if x is not None" conditions
 
 Low Priority
 ============

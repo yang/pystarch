@@ -305,6 +305,16 @@ class Visitor(ast.NodeVisitor):
                     self.consistent_types(node, [node.left, rhs_type.key_type])
                 else:
                     self.warn('in-operator-argument-not-list-or-dict', node)
+        elif any(get_token(op) in ['Is', 'IsNot'] for op in node.ops):
+            if len(node.ops) > 1 or len(node.comparators) > 1:
+                self.warn('is-operator-chaining', node)
+            else:
+                rhs = node.comparators[0]
+                lhs_type = self.expr_type(node.left)
+                rhs_type = self.expr_type(rhs)
+                if not (isinstance(lhs_type, Maybe)
+                        and isinstance(rhs_type, NoneType)):
+                    self.consistent_types(node, [node.left, rhs])
         else:
             self.consistent_types(node, [node.left] + node.comparators)
         self.generic_visit(node)
