@@ -173,9 +173,22 @@ def comprehension_type(elements, generators, context):
     return element_types
 
 
+def known_types(types):
+    return set([x for x in types if not isinstance(x, Unknown)])
+
+
+def unique_type(types):
+    known = known_types(types)
+    return iter(known).next() if len(known) == 1 else Unknown()
+
+
 # Note: "True" and "False" evalute to Bool because they are symbol
 # names that have their types builtin to the default context. Similarly,
 # "None" has type NoneType.
+# If type cannot be positively determined, then this will return Unknown.
+# Note that this does not mean that errors will always return Unknown, for
+# example, 2 / 'a' will still return Num because the division operator
+# must always return Num. Similarly, "[1,2,3] + Unknown" will return List(Num)
 def expression_type(node, context):
     """
     This function determines the type of an expression, but does
@@ -184,16 +197,34 @@ def expression_type(node, context):
     recur = partial(expression_type, context=context)
     token = get_token(node)
     if token == 'BoolOp':
-        return recur(node.values[0])
+        return Bool()   # more restrictive than Python
     if token == 'BinOp':
         types = [recur(node.left), recur(node.right)]
         token = get_token(node.op)
-        if token == 'Mult' and set(types) == {Num(), Str()}:
-            return Str()
-        if token == 'Add' and all(isinstance(x, Tuple) for x in types):
-            item_types = types[0].item_types + types[1].item_types
-            return Tuple(item_types)
-        return iter(types).next()
+        if token == 'Mult':
+            if set(types) == {Num()}:
+                return Num()
+            elif set(types) == {Num(), Str()}:
+                return Str()
+            elif set(types) == {Str(), Unknown()}:
+                return Str()
+            else:
+                return Unknown()
+        if token == 'Add':
+            known = known_types(types)
+            if all(isinstance(x, Tuple) for x in types):
+                item_types = types[0].item_types + types[1].item_types
+                return Tuple(item_types)
+            elif len(known) == 1:
+                operand_type = iter(known).next()
+                if isinstance(operand_type, (Num, List)):
+                    return operand_type
+                else:
+                    return Unknown()
+            else:
+                return Unknown()
+        else:
+            return Num()
     if token == 'UnaryOp':
         return Bool() if get_token(node.op) == 'Not' else Num()
     if token == 'Lambda':
@@ -201,24 +232,27 @@ def expression_type(node, context):
     if token == 'IfExp':
         body_type = recur(node.body)
         orelse_type = recur(node.orelse)
-        if isinstance(orelse_type, NoneType):
+        known = known_types([body_type, orelse_type])
+        if len(known) == 1:
+            return iter(known).next()
+        elif isinstance(orelse_type, NoneType):
             if isinstance(body_type, Maybe):
                 return body_type
             else:
                 return Maybe(body_type)
-        if isinstance(body_type, NoneType):
+        elif isinstance(body_type, NoneType):
             if isinstance(orelse_type, Maybe):
                 return orelse_type
             else:
                 return Maybe(orelse_type)
-        return body_type
+        else:
+            return body_type
     if token == 'Dict':
-        key_type = recur(node.keys[0]) if len(node.keys) > 0 else NoneType()
-        value_type = (recur(node.values[0]) if len(node.values) > 0
-            else NoneType())
+        key_type = unique_type([recur(key) for key in node.keys])
+        value_type = unique_type([recur(value) for value in node.values])
         return Dict(key_type, value_type)
     if token == 'Set':
-        return Set(recur(node.elts[0]))
+        return Set(unique_type([recur(elt) for elt in node.elts]))
     if token == 'ListComp':
         element_type, = comprehension_type([node.elt], node.generators, context)
         return List(element_type)
@@ -279,8 +313,7 @@ def expression_type(node, context):
     if token == 'Name':
         return context.get_type(node.id, Unknown())
     if token == 'List':
-        element_type = recur(node.elts[0]) if len(node.elts) > 0 else NoneType()
-        return List(element_type)
+        return List(unique_type([recur(elt) for elt in node.elts]))
     if token == 'Tuple':
         item_types = [recur(element) for element in node.elts]
         return Tuple(item_types)
