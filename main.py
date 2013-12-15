@@ -2,8 +2,8 @@
 import sys
 import os
 import ast
-from type_objects import Any, Num, List, Dict, Tuple, Instance, Class, \
-    Function, NoneType, Bool, Str, Maybe
+from type_objects import NoneType, Bool, Num, Str, List, Dict, Tuple, \
+    Instance, Class, Function, Maybe, Unknown
 from imports import import_source
 from expr import expression_type, call_argtypes, Arguments, get_assignments, \
     AssignError, make_argument_scope, get_token, assign_generators
@@ -44,7 +44,7 @@ class FunctionEvaluator(object):
 
     def __call__(self, argument_scope, clear_warnings=False):
         if self.recursion_block:
-            return (Any(), [])
+            return (Unknown(), [])
         for i, item in enumerate(self.cache):
             scope, result = item
             if scope == argument_scope:
@@ -105,7 +105,7 @@ class Visitor(ast.NodeVisitor):
 
     def consistent_types(self, root_node, nodes, allow_maybe=False):
         types = [self.expr_type(node) for node in nodes]
-        non_any_types = [x for x in types if not x == Any()]
+        non_any_types = [x for x in types if not x == Unknown()]
         base_type = first_type(non_any_types)
         options = ([base_type, Maybe(base_type), NoneType()]
                     if allow_maybe else [base_type])
@@ -119,7 +119,7 @@ class Visitor(ast.NodeVisitor):
         if not isinstance(types, tuple):
             types = (types,)
         expr_type = self.expr_type(node)
-        if expr_type not in types + (Any(),):
+        if expr_type not in types + (Unknown(),):
             self.warn(category, node)
 
     def check_return(self, node, return_type):
@@ -208,7 +208,7 @@ class Visitor(ast.NodeVisitor):
         specified_types = zip(arguments.names,
             arguments.explicit_types, arguments.default_types)
         for name, explicit_type, default_type in specified_types:
-            if (explicit_type != Any() and default_type != Any() and
+            if (explicit_type != Unknown() and default_type != Unknown() and
                     default_type != explicit_type):
                 self.warn('default-argument-type-error', node, name)
         return_type = FunctionEvaluator(self._filepath, node.body,
@@ -224,7 +224,7 @@ class Visitor(ast.NodeVisitor):
 
     def check_argument_type(self, node, label, got, expected):
         assert isinstance(expected, list)
-        if Any() not in expected and got not in expected + [NoneType()]:
+        if Unknown() not in expected and got not in expected + [NoneType()]:
             self.type_error(node, 'Argument ' + label, got, expected)
 
     def visit_Call(self, node):

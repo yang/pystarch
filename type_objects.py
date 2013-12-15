@@ -30,10 +30,7 @@ class CallableMixin(object):
             self.arguments)
 
 
-class Undefined(EqualityMixin, BasicMixin):
-    pass
-
-class Any(EqualityMixin, BasicMixin):
+class Unknown(EqualityMixin, BasicMixin):
     pass
 
 class NoneType(EqualityMixin, BasicMixin):

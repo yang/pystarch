@@ -2,8 +2,8 @@
 type validation. If there is a problem with the types, it should do some
 default behavior or raise an exception if there is no default behavior."""
 from functools import partial
-from type_objects import Any, NoneType, Bool, Num, Str, List, Tuple, Set, \
-    Dict, Function, Instance, Undefined, Maybe
+from type_objects import NoneType, Bool, Num, Str, List, Tuple, Set, \
+    Dict, Function, Instance, Maybe, Unknown
 from evaluate import static_evaluate, EvaluateError
 
 
@@ -58,10 +58,10 @@ class Arguments(object):
         self.min_count = len(arguments.args) - len(arguments.defaults)
         default_types = [expression_type(d, context)
                             for d in arguments.defaults]
-        self.default_types = ([Any()] * self.min_count) + default_types
+        self.default_types = ([Unknown()] * self.min_count) + default_types
         self.explicit_types = self.get_explicit_argtypes(
             decorator_list, context)
-        self.types = [explicit if explicit != Any() else default
+        self.types = [explicit if explicit != Unknown() else default
             for explicit, default
             in zip(self.explicit_types, self.default_types)]
         self.vararg_name = arguments.vararg
@@ -95,16 +95,16 @@ class Arguments(object):
             argtypes, kwargtypes = call_argtypes(types_decorator[0], context)
         else:
             argtypes, kwargtypes = [], {}
-        return argtypes + [kwargtypes.get(name, Any())
+        return argtypes + [kwargtypes.get(name, Unknown())
             for name in self.names[len(argtypes):]]
 
     def load_context(self, context):
         for name, argtype in self.get_dict().items():
             context.add_symbol(name, argtype)
         if self.vararg_name:
-            context.add_symbol(self.vararg_name, List(Any()))
+            context.add_symbol(self.vararg_name, List(Unknown()))
         if self.kwarg_name:
-            context.add_symbol(self.kwarg_name, Dict(Any(), Any()))
+            context.add_symbol(self.kwarg_name, Dict(Unknown(), Unknown()))
 
     def __str__(self):
         vararg = (', {0}: Tuple'.format(self.vararg_name)
@@ -239,7 +239,7 @@ def expression_type(node, context):
     if token == 'Call':
         function_type = recur(node.func)
         if not isinstance(function_type, Function):
-            return Undefined()
+            return Unknown()
         arguments = function_type.arguments
         argument_scope = make_argument_scope(node, arguments, context)
         return_type, _ = function_type.return_type(argument_scope)
@@ -253,7 +253,7 @@ def expression_type(node, context):
     if token == 'Attribute':
         value_type = recur(node.value)
         if not isinstance(value_type, Instance):
-            return Undefined()
+            return Unknown()
         return value_type.attributes[node.attr]
     if token == 'Subscript':
         value_type = recur(node.value)
@@ -262,22 +262,22 @@ def expression_type(node, context):
                 try:
                     index = static_evaluate(node.slice.value, context)
                 except EvaluateError:
-                    return Undefined()
+                    return Unknown()
                 if not isinstance(index, int):
-                    return Undefined()
+                    return Unknown()
                 if not (0 <= index < len(value_type.item_types)):
-                    return Undefined()
+                    return Unknown()
                 return value_type.item_types[index]
             elif isinstance(value_type, List):
                 return value_type.item_type
             elif isinstance(value_type, Dict):
                 return value_type.value_type
             else:
-                return Undefined()
+                return Unknown()
         else:
             return value_type
     if token == 'Name':
-        return context.get_type(node.id, Undefined())
+        return context.get_type(node.id, Unknown())
     if token == 'List':
         element_type = recur(node.elts[0]) if len(node.elts) > 0 else NoneType()
         return List(element_type)

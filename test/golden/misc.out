@@ -6,14 +6,14 @@ c Num
 func Function()
 func2 Function()
 globe Num
-instance Undefined
-my_function Function(sam: Function(x: Any), maxi: Function(obj: Any))
+instance Unknown
+my_function Function(sam: Function(x: Unknown), maxi: Function(obj: Unknown))
 testimport Instance(__import__)
 types Function(, args: Tuple, kwargs: Dict)
 v List(NoneType)
 w Maybe(Num)
-x Undefined
-y Undefined
+x Unknown
+y Unknown
 z Dict(NoneType,NoneType)
 
 testcases/misc.py:54 assignment-error "Tuple = ..."

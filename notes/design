@@ -1,7 +1,0 @@
-All types are implicitly maybe types, so "x is None" is always valid and
-you can always return None from a function even if it returns something
-else on another branch.
-
-Ways to generate maybe types:
-1. Return None from function that return non-None on another branch.
-2. x = y if z else None
