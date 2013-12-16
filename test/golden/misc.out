@@ -23,13 +23,12 @@ testcases/misc.py:57 reassignment "c = ..."
 testcases/misc.py:58 missing-argument "my_function" (sam)
 testcases/misc.py:58 missing-argument "my_function" (maxi)
 testcases/misc.py:22 reassignment "bob = ..."
-testcases/misc.py:22 inconsistent-types "Add"
 testcases/misc.py:22 undefined "sam"
 testcases/misc.py:23 reassignment "globe = ..."
 testcases/misc.py:59 not-a-function "MyClass" (MyClass)
 testcases/misc.py:37 type-change "alice = ..." (Num -> Str)
 testcases/misc.py:37 reassignment "alice = ..."
-testcases/misc.py:38 type-change "Return" (List(Unknown) -> Str)
+testcases/misc.py:38 multiple-return-types "Return" (List(Unknown) -> Str)
 testcases/misc.py:43 inconsitent-types "Eq" (Str, List(Num))
 testcases/misc.py:45 inconsitent-types "Is" (Str, NoneType)
 testcases/misc.py:49 reassignment "alice = ..."

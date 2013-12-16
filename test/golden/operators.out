@@ -12,9 +12,9 @@ x11 List(Unknown)
 x12 Tuple(Num,Str,Str,Num)
 x13 Tuple(Num,Num,Num,Num)
 
-testcases/operators.py:2 invalid-types "Mult"
-testcases/operators.py:4 invalid-types "Mult"
-testcases/operators.py:6 non-bool-operand "List"
-testcases/operators.py:7 non-bool-operand "Num"
-testcases/operators.py:9 non-num-operand "Str"
-testcases/operators.py:9 non-num-operand "Str"
+testcases/operators.py:2 type-error "Mult" ([Str, Str] vs {Num} or {Num, Str})
+testcases/operators.py:4 type-error "Mult" ([List(Unknown), List(Unknown)] vs {Num} or {Num, Str})
+testcases/operators.py:6 type-error "List" (List(Unknown) vs Bool)
+testcases/operators.py:7 type-error "Num" (Num vs Bool)
+testcases/operators.py:9 type-error "Str" (Str vs Num)
+testcases/operators.py:9 type-error "Str" (Str vs Num)

@@ -6,9 +6,22 @@ from type_objects import NoneType, Bool, Num, Str, List, Dict, Tuple, \
     Instance, Class, Function, Maybe, Unknown
 from imports import import_source
 from expr import expression_type, call_argtypes, Arguments, get_assignments, \
-    AssignError, make_argument_scope, get_token, assign_generators
+    AssignError, make_argument_scope, get_token, assign_generators, \
+    unify_types, known_types
 from show import show_node
 from context import Context, ExtendedContext
+
+
+def type_subset(types, classes):
+    return all(any(isinstance(t, c) for c in classes) for t in types)
+
+
+def type_set_match(types, classes):
+    known = known_types(types)
+    unmatched = [x for x in classes
+        if not any(isinstance(y, x) for y in types)]
+    unknowns = [x for x in types if isinstance(x, Unknown)]
+    return type_subset(known, classes) and len(unknowns) >= len(unmatched)
 
 
 def first_type(types):
@@ -105,22 +118,34 @@ class Visitor(ast.NodeVisitor):
 
     def consistent_types(self, root_node, nodes, allow_maybe=False):
         types = [self.expr_type(node) for node in nodes]
-        non_any_types = [x for x in types if not x == Unknown()]
-        base_type = first_type(non_any_types)
+        known = known_types(types)
+        base_type = first_type(known)
         options = ([base_type, Maybe(base_type), NoneType()]
                     if allow_maybe else [base_type])
-        for typ in non_any_types:
+        for typ in known:
             if not any(typ == x for x in options):
                 details = ', '.join([str(x) for x in types])
                 self.warn('inconsitent-types', root_node, details)
                 return
 
-    def check_type(self, node, types, category):
+    def check_type(self, node, types, override=None):
         if not isinstance(types, tuple):
             types = (types,)
-        expr_type = self.expr_type(node)
-        if expr_type not in types + (Unknown(),):
-            self.warn(category, node)
+        expr_type = override if override is not None else self.expr_type(node)
+        if not any(isinstance(expr_type, x) for x in types + (Unknown,)):
+            options = ' or '.join([x.__name__ for x in types])
+            details = '{0} vs {1}'.format(expr_type, options)
+            self.warn('type-error', node, details)
+
+    def check_type_set(self, node, types, type_sets):
+        if not isinstance(type_sets, tuple):
+            type_sets = (type_sets,)
+        if not any(type_set_match(types, x) for x in type_sets):
+            got = ', '.join([str(x) for x in types])
+            fmt_set = lambda s: '{' + ', '.join(x.__name__ for x in s) + '}'
+            options = ' or '.join([fmt_set(x) for x in type_sets])
+            details = '[{0}] vs {1}'.format(got, options)
+            self.warn('type-error', node, details)
 
     def check_return(self, node, return_type):
         name = '__return__'
@@ -128,22 +153,12 @@ class Visitor(ast.NodeVisitor):
         if previous_type is None:
             self._context.add_symbol(name, return_type)
             return
-        details = '{0} -> {1}'.format(previous_type, return_type)
-        if isinstance(return_type, NoneType):
-            if not isinstance(previous_type, (NoneType, Maybe)):
-                self._context.add_symbol(name, Maybe(previous_type))
-        elif isinstance(return_type, Maybe):
-            if not isinstance(previous_type, NoneType):
-                if return_type != previous_type:
-                    self.warn('type-change', node, details)
+        new_type = unify_types(previous_type, return_type)
+        if new_type == Unknown():
+            details = '{0} -> {1}'.format(previous_type, return_type)
+            self.warn('multiple-return-types', node, details)
         else:
-            if isinstance(previous_type, NoneType):
-                self._context.add_symbol(name, Maybe(return_type))
-            elif isinstance(previous_type, Maybe):
-                if return_type != previous_type.subtype:
-                    self.warn('type-change', node, details)
-            elif return_type != previous_type:
-                self.warn('type-change', node, details)
+            self._context.add_symbol(name, new_type)
 
     def check_assign_name_type(self, node, name, new_type):
         previous_type = self._context.get_type(name)
@@ -303,7 +318,7 @@ class Visitor(ast.NodeVisitor):
                         [node.left, rhs_type.item_type])
                 elif isinstance(rhs_type, Dict):
                     self.consistent_types(node, [node.left, rhs_type.key_type])
-                else:
+                elif not isinstance(rhs_type, Unknown):
                     self.warn('in-operator-argument-not-list-or-dict', node)
         elif any(get_token(op) in ['Is', 'IsNot'] for op in node.ops):
             if len(node.ops) > 1 or len(node.comparators) > 1:
@@ -321,7 +336,7 @@ class Visitor(ast.NodeVisitor):
 
     def visit_BoolOp(self, node):
         for value in node.values:
-            self.check_type(value, Bool(), 'non-bool-operand')
+            self.check_type(value, Bool)
         self.generic_visit(node)
 
     def visit_Delete(self, node):
@@ -331,20 +346,20 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_If(self, node):
-        self.check_type(node.test, Bool(), 'non-bool-if-condition')
+        self.check_type(node.test, Bool)
         self.generic_visit(node)
 
     def visit_While(self, node):
-        self.check_type(node.test, Bool(), 'non-bool-while-condition')
+        self.check_type(node.test, Bool)
         self.generic_visit(node)
 
     def visit_Slice(self, node):
         if node.lower is not None:
-            self.check_type(node.lower, Num(), 'non-num-slice')
+            self.check_type(node.lower, Num)
         if node.upper is not None:
-            self.check_type(node.upper, Num(), 'non-num-slice')
+            self.check_type(node.upper, Num)
         if node.step is not None:
-            self.check_type(node.step, Num(), 'non-num-slice')
+            self.check_type(node.step, Num)
         self.generic_visit(node)
 
     def visit_Index(self, node):
@@ -353,31 +368,32 @@ class Visitor(ast.NodeVisitor):
 
     def visit_BinOp(self, node):
         operator = get_token(node.op)
-        types = {self.expr_type(node.left), self.expr_type(node.right)}
+        types = [self.expr_type(node.left), self.expr_type(node.right)]
+        known = known_types(types)
         if operator == 'Mult':
-            if types != {Num()} and types != {Num(), Str()}:
-                self.warn('invalid-types', node)
+            self.check_type_set(node, types, ({Num}, {Num, Str}))
         elif operator == 'Add':
-            if len(types) > 1:
-                if not all(isinstance(x, Tuple) for x in types):
+            if len(known) > 1:
+                if not all(isinstance(x, Tuple) for x in known):
                     self.warn('inconsistent-types', node)
-            elif not isinstance(iter(types).next(), (Num, Str, List, Tuple)):
-                self.warn('invalid-type', node)
+            elif len(known) == 1:
+                self.check_type(node, (Num, Str, List, Tuple),
+                    override=iter(known).next())
         else:
-            self.check_type(node.left, Num(), 'non-num-operand')
-            self.check_type(node.right, Num(), 'non-num-operand')
+            self.check_type(node.left, Num)
+            self.check_type(node.right, Num)
         self.generic_visit(node)
 
     def visit_UnaryOp(self, node):
         operator = get_token(node.op)
         if operator == 'Not':
-            self.check_type(node.operand, Bool(), 'non-bool-operand')
+            self.check_type(node.operand, Bool)
         else:
-            self.check_type(node.operand, Num(), 'non-num-operand')
+            self.check_type(node.operand, Num)
         self.generic_visit(node)
 
     def visit_IfExp(self, node):
-        self.check_type(node.test, Bool(), 'non-bool-if-condition')
+        self.check_type(node.test, Bool)
         self.consistent_types(node, [node.body, node.orelse], allow_maybe=True)
         self.generic_visit(node)
 
