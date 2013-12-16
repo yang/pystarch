@@ -1,7 +1,6 @@
 """
 This file contains "prototypes" for builtins that have the same type
-signatures, but have stubbed implementations. Some builtins are commented
-out because they are deprecated or not valid in the functional sublanguage.
+signatures, but have stubbed implementations.
 """
 
 boolean = True
@@ -20,8 +19,8 @@ def all(iterable):
 def any(iterable):
     return boolean
 
-#def apply(func, args, keywords={}):
-#    pass
+def apply(func, args, keywords={}):
+    return unknown
 
 class basestring(object):
     def __init__(self):
@@ -34,8 +33,8 @@ def bin(x):
 def bool(x=False):
     return boolean
 
-#def buffer(obj, offset=number, size=None):
-#    pass
+def buffer(obj, offset=number, size=None):
+    return unknown
 
 def bytearray(source=string, encoding=string, errors=string):
     return [number]
@@ -47,8 +46,8 @@ def callable(obj):
 def chr(i):
     return string
 
-#def classmethod(func):
-#    pass
+def classmethod(func):
+    return unknown
 
 def cmp(x, y):
     return number
@@ -57,9 +56,9 @@ def cmp(x, y):
 def coerce(x, y):
     return (number, number)
 
-#@types(string, string, string, number, number)
-#def compile(source, filename, mode, flags=number, dont_inherit=number):
-#    pass
+@types(string, string, string, number, number)
+def compile(source, filename, mode, flags=number, dont_inherit=number):
+    return unknown
 
 @types(number, number)
 def complex(real=number, imag=number):
@@ -82,11 +81,11 @@ def divmod(a, b):
 def enumerate(sequence, start=number):
     return [(number, item) for item in sequence]
 
-#def eval(expression, globals, locals):
-#    pass
+def eval(expression, globals, locals):
+    return unknown
 
-#def execfile(filename, globals, locals):
-#    pass
+def execfile(filename, globals, locals):
+    return unknown
 
 class file(object):
     def __init__(self, name, mode=string, buffering=number):
@@ -152,11 +151,11 @@ def format(value, format_spec=string):
 def frozenset(iterable):
     return {x for x in iterable}
 
-#def getattr(obj, name, default=None):
-#    return anytype
+def getattr(obj, name, default=None):
+    return unknown
 
-#def globals():
-#    return {string: anytype}
+def globals():
+    return {string: unknown}
 
 def hasattr(obj, name):
     return boolean
@@ -174,12 +173,12 @@ def hex(number):
 def id(obj):
     return number
 
-#def __import__(name, globals={}, locals={}, fromlist=[], level=number):
-#    pass
+def __import__(name, globals={}, locals={}, fromlist=[], level=number):
+    return unknown
 
-#@types(string)
-#def input(prompt=''):
-#    pass
+@types(string)
+def input(prompt=''):
+    return unknown
 
 def int(x):
     return number
@@ -211,8 +210,8 @@ def len(s):
 def list(iterable):
     return [x for x in iterable]
 
-#def locals():
-#    return {string: anytype}
+def locals():
+    return {string: unknown}
 
 def long(x):
     return number
@@ -264,13 +263,11 @@ def ord(c):
 def pow(x, y, z=number):
     return number
 
-"""
-def print(*objects, **kwargs):
-    return None
-"""
+#def print(*objects, **kwargs):
+#    return None
 
-#def property():
-#    pass
+def property():
+    return unknown
 
 @types(number, number, number)
 def range(start, stop=number, step=number):
@@ -283,8 +280,8 @@ def raw_input(prompt=string):
 def reduce(func, iterable, initializer=ANY):
     return func(iterable[0], iterable[0])
 
-#def reload():
-#    pass
+def reload():
+    return unknown
 
 def repr(obj):
     return string
@@ -312,8 +309,8 @@ def sorted(iterable, cmp=lambda x,y: number, key=lambda x: number,
         reverse=boolean):
     return iterable
 
-#def staticmethod(func):
-#    pass
+def staticmethod(func):
+    return unknown
 
 def str(obj):
     return string
@@ -324,11 +321,11 @@ def sum(iterable, start=number):
 def super(classtype, obj):
     return classtype()
 
-#def tuple(iterable):
-#    pass
+def tuple(iterable):
+    return unknown
 
-#def type(obj):
-#    return pass
+def type(obj):
+    return unknown
 
 @types(number)
 def unichr(i):
@@ -337,8 +334,8 @@ def unichr(i):
 def unicode(obj, encoding=string, errors=string):
     return string
 
-#def vars(obj):
-#    return {}
+def vars(obj):
+    return {string: unknown}
 
 @types(number, number, number)
 def xrange(start, stop, step=number):
