@@ -1,4 +1,4 @@
-a Dict(Unknown,Unknown)
+a Dict(Unknown,Unknown) {}
 f Function()
 
 testcases/with.py:6 type-change "a = ..." (Str -> Num)

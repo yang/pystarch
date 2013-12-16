@@ -1,6 +1,6 @@
-x01 List(Num)
+x01 List(Num) [1, 2, 3, 4, 5]
 x02 Num
-x03 Tuple(Num,Str,Dict(Str,Num))
+x03 Tuple(Num,Str,Dict(Str,Num)) (0, 'bob', {'a': 1})
 x04 Num
 x05 Str
 x06 Dict(Str,Num)

@@ -209,8 +209,8 @@ def expression_type(node, context):
         return Bool()   # more restrictive than Python
     if token == 'BinOp':
         types = [recur(node.left), recur(node.right)]
-        token = get_token(node.op)
-        if token == 'Mult':
+        operator = get_token(node.op)
+        if operator == 'Mult':
             types_set = set(types)
             if types_set == {Num()}:
                 return Num()
@@ -220,7 +220,7 @@ def expression_type(node, context):
                 return Str()
             else:
                 return Unknown()
-        elif token == 'Add':
+        elif operator == 'Add':
             if all(isinstance(x, Tuple) for x in types):
                 item_types = types[0].item_types + types[1].item_types
                 return Tuple(item_types)

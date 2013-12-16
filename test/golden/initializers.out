@@ -1,9 +1,9 @@
-x01 List(Num)
-x02 List(Unknown)
-x03 Set(Num)
-x04 Set(Unknown)
-x05 Dict(Str,Num)
-x06 Dict(Unknown,Unknown)
+x01 List(Num) [1, 2, 3]
+x02 List(Unknown) [1, 'a', 2]
+x03 Set(Num) set([1, 2, 3])
+x04 Set(Unknown) set(['a', 1, 2])
+x05 Dict(Str,Num) {'a': 1, 'b': 2}
+x06 Dict(Unknown,Unknown) {'a': 1, 2: 'b'}
 
 testcases/initializers.py:2 inconsitent-types "List" (Num, Str, Num)
 testcases/initializers.py:4 inconsitent-types "Set" (Num, Str, Num)

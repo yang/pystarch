@@ -1,5 +1,5 @@
 MyClass Class()
-a List(Num)
+a List(Num) [1, 2, 3]
 another_function Function()
 b Num
 c Num
@@ -14,7 +14,7 @@ v List(Unknown)
 w Maybe(Num)
 x Unknown
 y Unknown
-z Dict(Unknown,Unknown)
+z Dict(Unknown,Unknown) {}
 
 testcases/misc.py:55 type-change "a = ..." (Num -> List(Num))
 testcases/misc.py:55 reassignment "a = ..."

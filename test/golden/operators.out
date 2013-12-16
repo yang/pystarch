@@ -1,16 +1,16 @@
-x01 Str
+x01 Str aaaaa
 x02 Unknown
-x03 Str
+x03 Str aaaaa
 x04 Unknown
-x05 Bool
-x06 Bool
-x07 Bool
-x08 Num
+x05 Bool False
+x06 Bool True
+x07 Bool False
+x08 Num 25
 x09 Num
-x10 Str
-x11 List(Unknown)
-x12 Tuple(Num,Str,Str,Num)
-x13 Tuple(Num,Num,Num,Num)
+x10 Str ab
+x11 List(Unknown) []
+x12 Tuple(Num,Str,Str,Num) (1, 'a', 'b', 2)
+x13 Tuple(Num,Num,Num,Num) (1, 2, 3, 4)
 
 testcases/operators.py:2 type-error "Mult" ([Str, Str] vs {Num} or {Num, Str})
 testcases/operators.py:4 type-error "Mult" ([List(Unknown), List(Unknown)] vs {Num} or {Num, Str})
