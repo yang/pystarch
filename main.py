@@ -6,10 +6,11 @@ from type_objects import NoneType, Bool, Num, Str, List, Dict, Tuple, \
     Instance, Class, Function, Maybe, Unknown
 from imports import import_source
 from expr import expression_type, call_argtypes, Arguments, get_assignments, \
-    AssignError, make_argument_scope, get_token, assign_generators, \
+    make_argument_scope, get_token, assign_generators, \
     unify_types, known_types
 from show import show_node
 from context import Context, ExtendedContext
+from evaluate import static_evaluate, UnknownValue
 
 
 def type_subset(types, classes):
@@ -73,7 +74,7 @@ class FunctionEvaluator(object):
         self.recursion_block = False
         warnings = visitor.warnings()
         scope = self.context.end_scope()
-        return_type = scope.get('__return__', NoneType())
+        return_type = scope.get('__return__', [NoneType()])[0]
         result = (return_type, warnings)
         cache_result = (return_type, []) if clear_warnings else result
         self.cache.append((argument_scope, cache_result))
@@ -116,6 +117,9 @@ class Visitor(ast.NodeVisitor):
     def expr_type(self, node):
         return expression_type(node, ExtendedContext(self._context))
 
+    def evaluate(self, node):
+        return static_evaluate(node, ExtendedContext(self._context))
+
     def consistent_types(self, root_node, nodes, allow_maybe=False):
         types = [self.expr_type(node) for node in nodes]
         known = known_types(types)
@@ -147,41 +151,41 @@ class Visitor(ast.NodeVisitor):
             details = '[{0}] vs {1}'.format(got, options)
             self.warn('type-error', node, details)
 
-    def check_return(self, node, return_type):
+    def check_return(self, node, is_yield=False):
         name = '__return__'
+        value_type = self.expr_type(node.value)
+        return_type = List(value_type) if is_yield else value_type
+        static_value = self.evaluate(node.value)
         previous_type = self._context.get_type(name)
         if previous_type is None:
-            self._context.add_symbol(name, return_type)
+            self._context.add_symbol(name, return_type, static_value)
             return
         new_type = unify_types(previous_type, return_type)
         if new_type == Unknown():
             details = '{0} -> {1}'.format(previous_type, return_type)
             self.warn('multiple-return-types', node, details)
         else:
-            self._context.add_symbol(name, new_type)
+            self._context.add_symbol(name, new_type, static_value)
 
-    def check_assign_name_type(self, node, name, new_type):
+    def check_assign_name_type(self, node, name, new_type, static_value):
         previous_type = self._context.get_type(name)
         if previous_type is not None:
             if previous_type != new_type:
                 details = '{0} -> {1}'.format(previous_type, new_type)
                 self.warn('type-change', node, details)
             self.warn('reassignment', node)
-        self._context.add_symbol(name, new_type)
+        self._context.add_symbol(name, new_type, static_value)
 
     def check_assign_name(self, node, name, value):
         value_type = self.expr_type(value)
-        self.check_assign_name_type(node, name, value_type)
+        static_value = self.evaluate(value)
+        self.check_assign_name_type(node, name, value_type, static_value)
 
     def check_assign(self, node, target, value, generator=False):
-        try:
-            assignments = get_assignments(target, value,
-                ExtendedContext(self._context), generator=generator)
-        except AssignError:
-            self.warn('assignment-error', node)
-            return
-        for name, assigned_type in assignments:
-            self.check_assign_name_type(node, name, assigned_type)
+        assignments = get_assignments(target, value,
+            ExtendedContext(self._context), generator=generator)
+        for name, assigned_type, static_value in assignments:
+            self.check_assign_name_type(node, name, assigned_type, static_value)
 
     def visit_Name(self, node):
         if self._context.get_type(node.id) is None:
@@ -199,7 +203,7 @@ class Visitor(ast.NodeVisitor):
             source, filepath = import_source(name, [source_dir])
             _, scope = analyze(source, filepath)    # ignore warnings
             import_type = Instance('__import__', scope)
-            self._context.add_symbol(name, import_type)
+            self._context.add_symbol(name, import_type, UnknownValue())
 
     def visit_ClassDef(self, node):
         self.begin_scope()
@@ -207,7 +211,7 @@ class Visitor(ast.NodeVisitor):
         scope = self.end_scope()
         # TODO: handle case of no __init__ function
         if '__init__' in scope:
-            init_arguments = scope['__init__'].arguments
+            init_arguments = scope['__init__'][0].arguments
             arguments = Arguments.copy_without_first_argument(init_arguments)
         else:
             arguments = Arguments()
@@ -215,7 +219,7 @@ class Visitor(ast.NodeVisitor):
         # TODO: separate class/static methods and attributes from the rest
         class_type = Class(arguments, return_type, {})
         # TODO: save self.x into scope where "self" is 1st param to init
-        self._context.add_symbol(node.name, class_type)
+        self._context.add_symbol(node.name, class_type, UnknownValue())
 
     def visit_FunctionDef(self, node):
         arguments = Arguments(node.args, ExtendedContext(self._context),
@@ -229,7 +233,7 @@ class Visitor(ast.NodeVisitor):
         return_type = FunctionEvaluator(self._filepath, node.body,
             self._context.copy())
         function_type = Function(arguments, return_type)
-        self._context.add_symbol(node.name, function_type)
+        self._context.add_symbol(node.name, function_type, UnknownValue())
 
     def type_error(self, node, label, got, expected):
         template = '{0} expected type {1} but got {2}'
@@ -289,13 +293,11 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Return(self, node):
-        return_type = self.expr_type(node.value)
-        self.check_return(node, return_type)
+        self.check_return(node)
         self.generic_visit(node)
 
     def visit_Yield(self, node):
-        yield_type = self.expr_type(node).item_type
-        self.check_return(node, yield_type)
+        self.check_return(node, is_yield=True)
         self.generic_visit(node)
 
     def visit_Assign(self, node):
@@ -449,7 +451,9 @@ class Visitor(ast.NodeVisitor):
 
 def dump_scope(scope):
     end = '\n' if scope else ''
-    return '\n'.join([name + ' ' + str(scope[name])
+    return '\n'.join([name + ' ' + str(scope[name][0])
+        + (' ' + str(scope[name][1])
+            if not isinstance(scope[name][1], UnknownValue) else '')
         for name in sorted(scope.keys())]) + end
 
 

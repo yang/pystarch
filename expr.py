@@ -2,9 +2,10 @@
 type validation. If there is a problem with the types, it should do some
 default behavior or raise an exception if there is no default behavior."""
 from functools import partial
+from itertools import chain, repeat
 from type_objects import NoneType, Bool, Num, Str, List, Tuple, Set, \
     Dict, Function, Instance, Maybe, Unknown
-from evaluate import static_evaluate, EvaluateError
+from evaluate import static_evaluate, UnknownValue
 
 
 def get_token(node):
@@ -25,19 +26,23 @@ def call_argtypes(call_node, context):
     return types, keyword_types
 
 
+def make_scope_item(node, context):
+    return (expression_type(node, context), static_evaluate(node, context))
+
+
 # context is the context at call-time, not definition-time
 def make_argument_scope(call_node, arguments, context):
     scope = {}
     for name, value in zip(arguments.names, call_node.args):
-        scope[name] = expression_type(value, context)
+        scope[name] = make_scope_item(value, context)
     for keyword in call_node.keywords:
         if keyword.arg in arguments.names:
-            scope[keyword.arg] = expression_type(keyword.value, context)
+            scope[keyword.arg] = make_scope_item(keyword.value, context)
     if call_node.starargs is not None and arguments.vararg_name is not None:
-        scope[arguments.vararg_name] = expression_type(
+        scope[arguments.vararg_name] = make_scope_item(
             call_node.starargs, context)
     if call_node.kwargs is not None and arguments.kwarg_name is not None:
-        scope[arguments.kwarg_name] = expression_type(call_node.kwargs, context)
+        scope[arguments.kwarg_name] = make_scope_item(call_node.kwargs, context)
     return scope
 
 
@@ -115,49 +120,41 @@ class Arguments(object):
             in zip(self.names, self.types)) + vararg + kwarg)
 
 
-class AssignError(RuntimeError):
-    pass
-
-
-# adds assigned symbols to the current namespace, does not do validation
 def get_assignments(target, value, context, generator=False):
     value_type = expression_type(value, context)
+    static_value = static_evaluate(value, context)
     if generator:
-        if hasattr(value_type, 'item_type'):
+        if isinstance(value_type, (List, Set)):
             assign_type = value_type.item_type
-        elif (hasattr(value_type, 'item_types')
-                and len(value_type.item_types) > 0):
-            # assume that all elements have the same type
-            assign_type = value_type.item_types[0]
         else:
-            raise AssignError('Invalid type in generator')
+            assign_type = Unknown()
     else:
         assign_type = value_type
 
     target_token = get_token(target)
     if target_token in ('Tuple', 'List'):
+        names = [element.id for element in target.elts]
+        values = static_value if isinstance(static_value, (Tuple, List)) else []
+        assign_values = chain(values, repeat(UnknownValue()))
         if isinstance(assign_type, Tuple):
-            if len(target.elts) != len(assign_type.item_types):
-                raise AssignError('Tuple unpacking length mismatch')
-            assignments = [(element.id, item_type) for element, item_type
-                in zip(target.elts, assign_type.item_types)]
+            assign_types = chain(assign_type.item_types, repeat(Unknown()))
         elif isinstance(assign_type, List):
-            element_type = assign_type.item_type
-            assignments = [(element.id, element_type)
-                for element in target.elts]
+            assign_types = repeat(assign_type.item_type)
         else:
-            raise AssignError('Invalid value type in assignment')
+            assign_types = repeat(Unknown())
+        assignments = zip(names, assign_types, assign_values)
     elif target_token == 'Name':
-        assignments = [(target.id, assign_type)]
+        assignments = [(target.id, assign_type, static_value)]
     else:
         raise RuntimeError('Unrecognized assignment target ' + target_token)
     return assignments
 
 
+# adds assigned symbols to the current namespace, does not do validation
 def assign(target, value, context, generator=False):
     assignments = get_assignments(target, value, context, generator)
-    for name, assigned_type in assignments:
-        context.add_symbol(name, assigned_type)
+    for name, assigned_type, static_value in assignments:
+        context.add_symbol(name, assigned_type, static_value)
 
 
 def assign_generators(generators, context):
@@ -279,14 +276,13 @@ def expression_type(node, context):
         value_type = recur(node.value)
         if not isinstance(value_type, Instance):
             return Unknown()
-        return value_type.attributes[node.attr]
+        return value_type.attributes[node.attr][0]
     if token == 'Subscript':
         value_type = recur(node.value)
         if get_token(node.slice) == 'Index':
             if isinstance(value_type, Tuple):
-                try:
-                    index = static_evaluate(node.slice.value, context)
-                except EvaluateError:
+                index = static_evaluate(node.slice.value, context)
+                if isinstance(index, UnknownValue):
                     return Unknown()
                 if not isinstance(index, int):
                     return Unknown()

@@ -33,6 +33,11 @@ Medium Priority
 ===============
 Check that function return values are not discarded
 Unwrap maybe in if-else branches
+- At visit_If, if the conditional statically implies "x is None" or
+    "x is not None" for any x in the set of symbols that have Maybe type,
+    then create a new context with the Maybes overridden for that branch
+- To check implication, static evaluate the conditional with x set to
+    None, if it is False, then it implies x is not None, and vice versa
 Unwrap maybe in comprehensions with "if x is not None" conditions
 
 Low Priority

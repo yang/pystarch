@@ -51,7 +51,7 @@ def another_function():
     return None
 
 a,b,c = [1,2,3]
-a,b,c = 'abc'
+#a,b,c = 'abc'
 a = [1,2,3]
 a[:2]
 c = b * 4

@@ -17,9 +17,9 @@ from type_objects import NoneType, Bool
 
 def builtin_scope():
     return {
-        'None': NoneType(),
-        'True': Bool(),
-        'False': Bool(),
+        'None': (NoneType(), None),
+        'True': (Bool(), True),
+        'False': (Bool(), False),
     }
 
 
@@ -42,8 +42,8 @@ class Context(object):
     def get_top_scope(self):
         return self._scope_layers[-1]
 
-    def add_symbol(self, name, symbol_type):
-        self.get_top_scope()[name] = symbol_type
+    def add_symbol(self, name, symbol_type, value):
+        self.get_top_scope()[name] = (symbol_type, value)
 
     def merge_scope(self, scope):
         self.get_top_scope().update(scope)
@@ -54,11 +54,19 @@ class Context(object):
                 del scope[name]
                 return
 
-    def get_type(self, name, default=None):
+    def lookup(self, name):
         for scope in reversed(self._scope_layers):
             if name in scope:
                 return scope[name]
-        return default
+        return None
+
+    def get_type(self, name, default=None):
+        result = self.lookup(name)
+        return result[0] if result is not None else default
+
+    def get_value(self, name, default):
+        result = self.lookup(name)
+        return result[1] if result is not None else default
 
     def __str__(self):
         return '\n'.join([
@@ -83,6 +91,13 @@ class ExtendedContext(Context):
             return extended_type
         else:
             return self._base_context.get_type(name, default)
+
+    def get_value(self, name, default):
+        extended_value = super(ExtendedContext, self).get_value(name, default)
+        if extended_value != default:
+            return extended_value
+        else:
+            return self._base_context.get_value(name, default)
 
     def __str__(self):
         extended = super(ExtendedContext, self).__str__()

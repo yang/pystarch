@@ -5,7 +5,7 @@ b Num
 c Num
 func Function()
 func2 Function()
-globe Num
+globe Num 1
 instance Unknown
 my_function Function(sam: Function(x: Unknown), maxi: Function(obj: Unknown))
 testimport Instance(__import__)
@@ -16,7 +16,6 @@ x Unknown
 y Unknown
 z Dict(Unknown,Unknown)
 
-testcases/misc.py:54 assignment-error "Tuple = ..."
 testcases/misc.py:55 type-change "a = ..." (Num -> List(Num))
 testcases/misc.py:55 reassignment "a = ..."
 testcases/misc.py:57 reassignment "c = ..."
@@ -39,7 +38,8 @@ testcases/misc.py:28 missing-argument "my_function" (maxi)
 testcases/misc.py:30 inconsitent-types "Eq" (Str, Num)
 testcases/misc.py:30 missing-argument "my_function" (sam)
 testcases/misc.py:30 missing-argument "my_function" (maxi)
+testcases/misc.py:68 type-change "i = ..." (Unknown -> Num)
 testcases/misc.py:68 reassignment "i = ..."
 testcases/misc.py:71 type-change "z = ..." (Num -> Dict(Unknown,Unknown))
 testcases/misc.py:71 reassignment "z = ..."
-builtins.py:257 not-a-function "file" (file)
+builtins.py:256 not-a-function "file" (file)
