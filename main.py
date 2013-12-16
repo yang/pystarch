@@ -320,7 +320,8 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_BoolOp(self, node):
-        self.consistent_types(node, node.values)
+        for value in node.values:
+            self.check_type(value, Bool(), 'non-bool-operand')
         self.generic_visit(node)
 
     def visit_Delete(self, node):

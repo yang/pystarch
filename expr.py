@@ -165,12 +165,12 @@ def assign_generators(generators, context):
         assign(generator.target, generator.iter, context, generator=True)
 
 
-def comprehension_type(elements, generators, context):
+def comprehension_type(element, generators, context):
     context.begin_scope()
     assign_generators(generators, context)
-    element_types = [expression_type(element, context) for element in elements]
+    element_type = expression_type(element, context)
     context.end_scope()
-    return element_types
+    return element_type
 
 
 def known_types(types):
@@ -180,6 +180,18 @@ def known_types(types):
 def unique_type(types):
     known = known_types(types)
     return iter(known).next() if len(known) == 1 else Unknown()
+
+
+def unify_types(a, b):
+    unique = unique_type([a, b])
+    if unique != Unknown():
+        return unique
+    elif isinstance(a, NoneType):
+        return b if isinstance(b, Maybe) else Maybe(b)
+    elif isinstance(b, NoneType):
+        return a if isinstance(a, Maybe) else Maybe(a)
+    else:
+        return Unknown()
 
 
 # Note: "True" and "False" evalute to Bool because they are symbol
@@ -202,27 +214,25 @@ def expression_type(node, context):
         types = [recur(node.left), recur(node.right)]
         token = get_token(node.op)
         if token == 'Mult':
-            if set(types) == {Num()}:
+            types_set = set(types)
+            if types_set == {Num()}:
                 return Num()
-            elif set(types) == {Num(), Str()}:
+            elif types_set == {Num(), Str()}:
                 return Str()
-            elif set(types) == {Str(), Unknown()}:
+            elif types_set == {Str(), Unknown()}:
                 return Str()
             else:
                 return Unknown()
-        if token == 'Add':
-            known = known_types(types)
+        elif token == 'Add':
             if all(isinstance(x, Tuple) for x in types):
                 item_types = types[0].item_types + types[1].item_types
                 return Tuple(item_types)
-            elif len(known) == 1:
-                operand_type = iter(known).next()
-                if isinstance(operand_type, (Num, List)):
+            else:
+                operand_type = unique_type(types)
+                if isinstance(operand_type, (Num, Str, List)):
                     return operand_type
                 else:
                     return Unknown()
-            else:
-                return Unknown()
         else:
             return Num()
     if token == 'UnaryOp':
@@ -230,23 +240,7 @@ def expression_type(node, context):
     if token == 'Lambda':
         return Function(Arguments(node.args, context), recur(node.body))
     if token == 'IfExp':
-        body_type = recur(node.body)
-        orelse_type = recur(node.orelse)
-        known = known_types([body_type, orelse_type])
-        if len(known) == 1:
-            return iter(known).next()
-        elif isinstance(orelse_type, NoneType):
-            if isinstance(body_type, Maybe):
-                return body_type
-            else:
-                return Maybe(body_type)
-        elif isinstance(body_type, NoneType):
-            if isinstance(orelse_type, Maybe):
-                return orelse_type
-            else:
-                return Maybe(orelse_type)
-        else:
-            return body_type
+        return unify_types(recur(node.body), recur(node.orelse))
     if token == 'Dict':
         key_type = unique_type([recur(key) for key in node.keys])
         value_type = unique_type([recur(value) for value in node.values])
@@ -254,18 +248,15 @@ def expression_type(node, context):
     if token == 'Set':
         return Set(unique_type([recur(elt) for elt in node.elts]))
     if token == 'ListComp':
-        element_type, = comprehension_type([node.elt], node.generators, context)
-        return List(element_type)
+        return List(comprehension_type(node.elt, node.generators, context))
     if token == 'SetComp':
-        element_type, = comprehension_type([node.elt], node.generators, context)
-        return Set(element_type)
+        return Set(comprehension_type(node.elt, node.generators, context))
     if token == 'DictComp':
-        key_type, value_type = comprehension_type([node.key, node.value],
-            node.generators, context)
+        key_type = comprehension_type(node.key, node.generators, context)
+        value_type = comprehension_type(node.value, node.generators, context)
         return Dict(key_type, value_type)
     if token == 'GeneratorExp':
-        element_type, = comprehension_type([node.elt], node.generators, context)
-        return List(element_type)
+        return List(comprehension_type(node.elt, node.generators, context))
     if token == 'Yield':
         return List(recur(node.value))
     if token == 'Compare':
@@ -315,32 +306,5 @@ def expression_type(node, context):
     if token == 'List':
         return List(unique_type([recur(elt) for elt in node.elts]))
     if token == 'Tuple':
-        item_types = [recur(element) for element in node.elts]
-        return Tuple(item_types)
+        return Tuple([recur(element) for element in node.elts])
     raise Exception('expression_type does not recognize ' + token)
-
-
-def unit_test():
-    context = Context()
-    source = [
-        '5 + 5',
-        'not True',
-        '+"abc"',
-        '[a for a in (1, 2, 3)]',
-        '[a for a in [1, 2, 3]]',
-        '[a for a in {1, 2, 3}]',
-        '[a * "a" for a in [1, 2, 3]]',
-        '[{0: "a" * (a + 1)} for a in [1, 2, 3]]',
-        '{a: b for a, b in [("x", 0), ("y", 1)]}',
-    ]
-    module = ast.parse('\n'.join(source))
-    print(ast.dump(module))
-    for i, statement in enumerate(module.body):
-        expression = statement.value
-        print(source[i] + ': ' + str(expression_type(expression, context)))
-
-
-if __name__ == '__main__':
-    import ast
-    from context import Context
-    unit_test()

@@ -39,6 +39,7 @@ Unwrap maybe in comprehensions with "if x is not None" conditions
 
 Low Priority
 ============
+Split Num into Int and Float
 Implement visit_Delete and actually remove items from scope
 Cache results of imports for speed (/var/cache/...)
 Optimize function return type evaluation when return type can be determined
