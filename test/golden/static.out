@@ -1,5 +1,10 @@
+f Function(x: Unknown)
 x01 Num 1
 x02 Num 3
 x03 Bool False
 x04 Bool False
 x05 Bool True
+x06 Maybe(Num)
+x07 Bool True
+
+testcases/static.py:9 constant-if-condition "If"

@@ -4,3 +4,7 @@ c Maybe(Num)
 f Function(a: Unknown)
 g Function(a: Unknown)
 h Function(a: Unknown)
+
+testcases/maybe.py:2 constant-if-condition "If"
+testcases/maybe.py:7 constant-if-condition "If"
+testcases/maybe.py:7 constant-if-condition "If"

@@ -1,6 +1,8 @@
 
 High Priority
 =============
+Need to be able to evalute "x is None" based only on the type of x,
+    even though we don't know the value of x.
 Unwrap maybe in if-else branches
 - At visit_If, if the conditional statically implies "x is None" or
     "x is not None" for any x in the set of symbols that have Maybe type,

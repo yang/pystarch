@@ -31,36 +31,53 @@ class CallableMixin(object):
 
 
 class Unknown(EqualityMixin, BasicMixin):
-    pass
+    def example(self):
+        return object()
 
 class NoneType(EqualityMixin, BasicMixin):
-    pass
+    def example(self):
+        return None
 
 class Bool(EqualityMixin, BasicMixin):
-    pass
+    def example(self):
+        return True
 
 class Num(EqualityMixin, BasicMixin):
-    pass
+    def example(self):
+        return 1
 
 class Str(EqualityMixin, BasicMixin):
-    pass
+    def example(self):
+        return 'a'
 
 class List(EqualityMixin, ItemTypeMixin):
     def __init__(self, item_type):
         self.item_type = item_type
 
+    def example(self):
+        return [self.item_type.example()]
+
 class Tuple(EqualityMixin, TupleMixin):
     def __init__(self, item_types):
         self.item_types = item_types
+
+    def example(self):
+        return tuple(x.example() for x in self.item_types)
 
 class Set(EqualityMixin, ItemTypeMixin):
     def __init__(self, item_type):
         self.item_type = item_type
 
+    def example(self):
+        return {self.item_type.example()}
+
 class Dict(EqualityMixin):
     def __init__(self, key_type, value_type):
         self.key_type = key_type
         self.value_type = value_type
+
+    def example(self):
+        return {self.key_type.example(): self.value_type.example()}
 
     def __str__(self):
         return '{0}({1},{2})'.format(self.__class__.__name__,
@@ -71,11 +88,17 @@ class Function(EqualityMixin, CallableMixin):
         self.arguments = arguments
         self.return_type = return_type
 
+    def example(self):
+        return object()
+
 # set class_name to __import__ for imports
 class Instance(EqualityMixin):
     def __init__(self, class_name, attributes):
         self.class_name = class_name
         self.attributes = attributes
+
+    def example(self):
+        return object()
 
     def __str__(self):
         return '{0}({1})'.format(self.__class__.__name__, self.class_name)
@@ -88,9 +111,15 @@ class Class(EqualityMixin, CallableMixin):
         # symbols only contains class methods and class attributes
         self.attributes = attributes
 
+    def example(self):
+        return object()
+
 class Maybe(EqualityMixin):
     def __init__(self, subtype):
         self.subtype = subtype
+
+    def example(self):
+        return self.subtype.example()
 
     def __str__(self):
         return '{0}({1})'.format(self.__class__.__name__, self.subtype)

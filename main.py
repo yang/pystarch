@@ -349,11 +349,25 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_If(self, node):
+        test_value = static_evaluate(node.test, ExtendedContext(self._context))
+        if not isinstance(test_value, Unknown):
+            self.warn('constant-if-condition', node)
         names = get_names(node.test)
-        maybe_names = [name for name in names
-            if isinstance(self._context.get_type(name), Maybe)]
-        if maybe_names:
-            print(maybe_names)
+        types = {name: self._context.get_type(name) for name in names}
+        maybes = {k: v for k, v in types.items() if isinstance(v, Maybe)}
+        if maybes:
+            print(maybes)
+        assumptions = {}
+        else_assumptions = {}
+        for name, maybe_type in maybes.items():
+            context = ExtendedContext(self._context)
+            context.add_symbol(name, NoneType(), None)
+            if static_evaluate(node.test, context) is False:
+                assumptions[name] = maybe_type.subtype
+            context.remove_symbol(name)
+            context.add_symbol(name, maybe_type.subtype, UnknownValue())
+            if static_evaluate(node.test, context) is False:
+                assumptions[name] = NoneType()
         self.check_type(node.test, Bool)
         self.generic_visit(node)
 

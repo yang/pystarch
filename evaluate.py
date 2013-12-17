@@ -24,6 +24,16 @@ def operator_evaluate(operator, *args):
         return UnknownValue()
 
 
+def comparison_evaluate(operator, left, right):
+    left_value, left_type = left
+    right_value, right_type = right
+    if operator in ['Is', 'Eq'] and left_type != right_type:
+        return False
+    if operator in ['IsNot', 'NotEq'] and left_type != right_type:
+        return True
+    return operator_evaluate(operator, left_type, right_type)
+
+
 # try to evaluate an expression without executing
 def static_evaluate(node, context):
     token = get_token(node)
@@ -44,10 +54,13 @@ def static_evaluate(node, context):
         operator = get_token(node.op)
         return operator_evaluate(operator, recur(node.left), recur(node.right))
     if token == 'Compare':
-        values = [recur(node.left)] + map(recur, node.comparators)
+        operands = [node.left] + node.comparators
         operators = map(get_token, node.ops)
-        assert len(values) == len(operators) + 1
-        results = [operator_evaluate(operators[i], values[i], values[i+1])
+        assert len(operands) == len(operators) + 1
+        values = map(recur, operands)
+        types = map(partial(expr.expression_type, context=context), operands)
+        params = zip(values, types)
+        results = [comparison_evaluate(operators[i], params[i], params[i+1])
             for i in range(len(operators))]
         return operator_evaluate('And', *results)
     if token == 'List':
