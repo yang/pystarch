@@ -1,7 +1,6 @@
 
 High Priority
 =============
-Mod function can return a string if LHS is a string (format operator)
 Use a code coverage tool to make sure everything is covered by tests
 Support calling functions that are defined later (needed for mutual recursion)
 

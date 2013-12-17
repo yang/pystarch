@@ -234,6 +234,11 @@ def expression_type(node, context):
                     return operand_type
                 else:
                     return Unknown()
+        elif operator == 'Mod':
+            if isinstance(recur(node.left), Str):
+                return Str()
+            else:
+                return Num()
         else:
             return Num()
     if token == 'UnaryOp':

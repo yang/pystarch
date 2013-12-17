@@ -381,6 +381,10 @@ class Visitor(ast.NodeVisitor):
             elif len(known) == 1:
                 self.check_type(node, (Num, Str, List, Tuple),
                     override=iter(known).next())
+        elif operator == 'Mod':
+            if not isinstance(types[0], (Str, Unknown)):
+                self.check_type(node.left, Num)
+                self.check_type(node.right, Num)
         else:
             self.check_type(node.left, Num)
             self.check_type(node.right, Num)
