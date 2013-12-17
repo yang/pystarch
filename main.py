@@ -74,7 +74,7 @@ class FunctionEvaluator(object):
         self.recursion_block = False
         warnings = visitor.warnings()
         scope = self.context.end_scope()
-        return_type = scope.get('__return__', [NoneType()])[0]
+        return_type = scope.get_type('__return__', NoneType())
         result = (return_type, warnings)
         cache_result = (return_type, []) if clear_warnings else result
         self.cache.append((argument_scope, cache_result))
@@ -211,7 +211,7 @@ class Visitor(ast.NodeVisitor):
         scope = self.end_scope()
         # TODO: handle case of no __init__ function
         if '__init__' in scope:
-            init_arguments = scope['__init__'][0].arguments
+            init_arguments = scope.get_type('__init__').arguments
             arguments = Arguments.copy_without_first_argument(init_arguments)
         else:
             arguments = Arguments()
@@ -449,14 +449,6 @@ class Visitor(ast.NodeVisitor):
         self.end_scope()
 
 
-def dump_scope(scope):
-    end = '\n' if scope else ''
-    return '\n'.join([name + ' ' + str(scope[name][0])
-        + (' ' + str(scope[name][1])
-            if not isinstance(scope[name][1], UnknownValue) else '')
-        for name in sorted(scope.keys())]) + end
-
-
 def analyze(source, filepath=None, context=None):
     tree = ast.parse(source, filepath)
     visitor = Visitor(filepath, context)
@@ -467,7 +459,7 @@ def analyze(source, filepath=None, context=None):
 def analysis(source, filepath=None):
     warnings, scope = analyze(source, filepath)
     warning_output = ''.join([str(warning) + '\n' for warning in warnings])
-    scope_output = dump_scope(scope)
+    scope_output = str(scope)
     separator = '\n' if warning_output and scope_output else ''
     return scope_output + separator + warning_output
 

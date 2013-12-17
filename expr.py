@@ -3,6 +3,7 @@ type validation. If there is a problem with the types, it should do some
 default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from itertools import chain, repeat
+from context import Scope
 from type_objects import NoneType, Bool, Num, Str, List, Tuple, Set, \
     Dict, Function, Instance, Maybe, Unknown
 from evaluate import static_evaluate, UnknownValue
@@ -26,23 +27,26 @@ def call_argtypes(call_node, context):
     return types, keyword_types
 
 
-def make_scope_item(node, context):
-    return (expression_type(node, context), static_evaluate(node, context))
+def add_scope_symbol(scope, name, node, context):
+    typ = expression_type(node, context)
+    value = static_evaluate(node, context)
+    scope.add_symbol(name, typ, value)
 
 
 # context is the context at call-time, not definition-time
 def make_argument_scope(call_node, arguments, context):
-    scope = {}
+    scope = Scope()
     for name, value in zip(arguments.names, call_node.args):
-        scope[name] = make_scope_item(value, context)
+        add_scope_symbol(scope, name, value, context)
     for keyword in call_node.keywords:
         if keyword.arg in arguments.names:
-            scope[keyword.arg] = make_scope_item(keyword.value, context)
+            add_scope_symbol(scope, keyword.arg, keyword.value, context)
     if call_node.starargs is not None and arguments.vararg_name is not None:
-        scope[arguments.vararg_name] = make_scope_item(
-            call_node.starargs, context)
+        add_scope_symbol(scope, arguments.vararg_name, call_node.starargs,
+            context)
     if call_node.kwargs is not None and arguments.kwarg_name is not None:
-        scope[arguments.kwarg_name] = make_scope_item(call_node.kwargs, context)
+        add_scope_symbol(scope, arguments.kwarg_name, call_node.kwargs,
+            context)
     return scope
 
 
@@ -276,7 +280,7 @@ def expression_type(node, context):
         value_type = recur(node.value)
         if not isinstance(value_type, Instance):
             return Unknown()
-        return value_type.attributes[node.attr][0]
+        return value_type.attributes.get_type(node.attr, Unknown())
     if token == 'Subscript':
         value_type = recur(node.value)
         if get_token(node.slice) == 'Index':

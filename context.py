@@ -1,4 +1,5 @@
 from type_objects import NoneType, Bool
+from evaluate import UnknownValue
 
 # Tricky: need to support obj1.obj2.x where obj2 is an instance
 # of a class that may not be defined in the current scope
@@ -16,16 +17,55 @@ from type_objects import NoneType, Bool
 
 
 def builtin_scope():
-    return {
-        'None': (NoneType(), None),
-        'True': (Bool(), True),
-        'False': (Bool(), False),
-    }
+    scope = Scope()
+    scope.add_symbol('None', NoneType(), None)
+    scope.add_symbol('True', Bool(), True)
+    scope.add_symbol('False', Bool(), False)
+    return scope
+
+
+def format_symbol(symbol):
+    if isinstance(symbol[1], UnknownValue):
+        return str(symbol[0])
+    else:
+        return str(symbol[0]) + ' ' + str(symbol[1])
+
+
+class Scope(object):
+    def __init__(self):
+        self._symbols = {}
+
+    def __str__(self):
+        fmt = lambda name, sym: '{0} {1}'.format(name, format_symbol(sym))
+        end = '\n' if len(self._symbols) > 0 else ''
+        return '\n'.join([fmt(name, self._symbols[name])
+            for name in sorted(self._symbols.keys())]) + end
+
+    def __contains__(self, name):
+        return name in self._symbols
+
+    def add_symbol(self, name, typ, value):
+        self._symbols[name] = (typ, value)
+
+    def remove_symbol(self, name):
+        del self._symbols[name]
+
+    def get_type(self, name, default=None):
+        return self._symbols[name][0] if name in self._symbols else default
+
+    def get_value(self, name, default):
+        return self._symbols[name][1] if name in self._symbols else default
+
+    def merge(self, scope):
+        self._symbols.update(scope._symbols)
 
 
 class Context(object):
     def __init__(self, layers=None):
         self._scope_layers = [builtin_scope()] if layers is None else layers
+
+    def __str__(self):
+        return '\n'.join([str(layer) for layer in self._scope_layers])
 
     def copy(self):
         """This makes a copy that won't lose scope layers when the original
@@ -34,45 +74,40 @@ class Context(object):
         return Context([scope for scope in self._scope_layers])
 
     def begin_scope(self):
-        self._scope_layers.append({})
+        self._scope_layers.append(Scope())
 
     def end_scope(self):
+        if len(self._scope_layers) <= 1:
+            raise RuntimeError('Cannot close bottom scope layer')
         return self._scope_layers.pop()
 
     def get_top_scope(self):
         return self._scope_layers[-1]
 
     def add_symbol(self, name, symbol_type, value):
-        self.get_top_scope()[name] = (symbol_type, value)
+        self.get_top_scope().add_symbol(name, symbol_type, value)
 
     def merge_scope(self, scope):
-        self.get_top_scope().update(scope)
+        self.get_top_scope().merge(scope)
 
-    def remove_symbol(self, name):
+    def find_scope(self, name):
         for scope in reversed(self._scope_layers):
             if name in scope:
-                del scope[name]
-                return
-
-    def lookup(self, name):
-        for scope in reversed(self._scope_layers):
-            if name in scope:
-                return scope[name]
+                return scope
         return None
 
+    def remove_symbol(self, name):
+        scope = self.find_scope(name)
+        if scope is not None:
+            scope.remove_symbol(name)
+
     def get_type(self, name, default=None):
-        result = self.lookup(name)
-        return result[0] if result is not None else default
+        scope = self.find_scope(name)
+        return scope.get_type(name, default) if scope is not None else default
 
     def get_value(self, name, default):
-        result = self.lookup(name)
-        return result[1] if result is not None else default
-
-    def __str__(self):
-        return '\n'.join([
-            '\n'.join([name + ' ' + str(layer[name])
-                for name in sorted(layer.keys())])
-            for layer in self._scope_layers])
+        scope = self.find_scope(name)
+        return scope.get_value(name, default) if scope is not None else default
 
 
 class ExtendedContext(Context):

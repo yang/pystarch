@@ -67,5 +67,5 @@ def static_evaluate(node, context):
     if token == 'Attribute':
         value_type = expr.expression_type(node.value, context)
         if isinstance(value_type, Instance):
-            return value_type.attributes[node.attr][1]
+            return value_type.attributes.get_value(node.attr, UnknownValue())
     return UnknownValue()
