@@ -11,6 +11,7 @@ from expr import expression_type, call_argtypes, Arguments, get_assignments, \
 from show import show_node
 from context import Context, ExtendedContext
 from evaluate import static_evaluate, UnknownValue
+from util import get_names
 
 
 def type_subset(types, classes):
@@ -348,6 +349,11 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_If(self, node):
+        names = get_names(node.test)
+        maybe_names = [name for name in names
+            if isinstance(self._context.get_type(name), Maybe)]
+        if maybe_names:
+            print(maybe_names)
         self.check_type(node.test, Bool)
         self.generic_visit(node)
 

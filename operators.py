@@ -1,4 +1,5 @@
 import operator
+from numbers import Number
 
 
 def and_operator(*values):
@@ -25,6 +26,15 @@ def mod_operator(left, right):
     return left % right
 
 
+def comparison(func):
+    def wrapper(*args):
+        types = (Number, set)
+        if not any(all(isinstance(x, y) for x in args) for y in types):
+            raise TypeError()
+        return func(*args)
+    return wrapper
+
+
 def get_operator_function(name):
     lookup = {
         'And': and_operator,
@@ -49,11 +59,11 @@ def get_operator_function(name):
         'RShift': operator.rshift,
         'Repeat': operator.repeat,  # special
         'Sub': operator.sub,
-        'Lt': operator.lt,
-        'LtE': operator.le,
+        'Lt': comparison(operator.lt),
+        'LtE': comparison(operator.le),
         'Eq': operator.eq,
         'NotEq': operator.ne,
-        'GtE': operator.ge,
-        'Gt': operator.gt,
+        'GtE': comparison(operator.ge),
+        'Gt': comparison(operator.gt),
     }
     return lookup.get(name)
