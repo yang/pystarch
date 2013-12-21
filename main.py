@@ -5,10 +5,29 @@ import ast
 from imports import import_source
 from backend import expression_type, call_argtypes, Arguments, \
     get_assignments, make_argument_scope, get_token, assign_generators, \
-    unify_types, known_types, show_node, Context, ExtendedContext, Scope, \
+    unify_types, known_types, Context, ExtendedContext, Scope, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, first_type, \
     type_set_match, maybe_inferences
+
+
+def show_node(node):
+    token = get_token(node)
+    if token == 'Name':
+        return node.id
+    if token == 'Call':
+        return show_node(node.func)
+    if token == 'Attribute':
+        return '.' + show_node(node.attr)
+    if token in ['BoolOp', 'BinOp', 'UnaryOp']:
+        return get_token(node.op)
+    if token == 'Assign':
+        return show_node(node.targets[0]) + ' = ...'
+    if token == 'AugAssign':
+        return show_node(node.target) + ' = ...'
+    if token == 'Compare':
+        return ' '.join([get_token(op) for op in node.ops])
+    return token
 
 
 def builtin_context():
