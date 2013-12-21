@@ -4,9 +4,10 @@ default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from itertools import chain, repeat
 from context import Scope
-from type_objects import NoneType, Bool, Num, Str, List, Tuple, Set, \
-    Dict, Function, Instance, Maybe, Unknown
+from type_objects import Bool, Num, Str, List, Tuple, Set, \
+    Dict, Function, Instance, Unknown
 from evaluate import static_evaluate, UnknownValue
+from util import unique_type, unify_types
 
 
 def get_token(node):
@@ -172,39 +173,6 @@ def comprehension_type(element, generators, context):
     element_type = expression_type(element, context)
     context.end_scope()
     return element_type
-
-
-def known_types(types):
-    return set([x for x in types if not isinstance(x, Unknown)])
-
-
-def unique_type(types):
-    known = known_types(types)
-    return iter(known).next() if len(known) == 1 else Unknown()
-
-
-def unify_types(a, b):
-    unique = unique_type([a, b])
-    if unique != Unknown():
-        return unique
-    elif isinstance(a, NoneType):
-        return b if isinstance(b, Maybe) else Maybe(b)
-    elif isinstance(b, NoneType):
-        return a if isinstance(a, Maybe) else Maybe(a)
-    else:
-        return Unknown()
-
-
-def comparable_types(a, b):
-    if a == b or isinstance(a, Unknown) or isinstance(b, Unknown):
-        return True
-    if isinstance(a, Maybe):
-        if isinstance(b, (NoneType, a.subtype)):
-            return True
-    if isinstance(b, Maybe):
-        if isinstance(a, (NoneType, b.subtype)):
-            return True
-    return False
 
 
 # Note: "True" and "False" evalute to Bool because they are symbol

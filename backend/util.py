@@ -1,22 +1,37 @@
-import ast
 from type_objects import NoneType, Maybe, Unknown
-from expr import known_types
-from evaluate import static_evaluate, UnknownValue
 
 
-class Visitor(ast.NodeVisitor):
-    def __init__(self):
-        ast.NodeVisitor.__init__(self)
-        self.names = []
-
-    def visit_Name(self, node):
-        self.names.append(node.id)
+def known_types(types):
+    return set([x for x in types if not isinstance(x, Unknown)])
 
 
-def get_names(node):
-    visitor = Visitor()
-    visitor.visit(node)
-    return visitor.names
+def unique_type(types):
+    known = known_types(types)
+    return iter(known).next() if len(known) == 1 else Unknown()
+
+
+def unify_types(a, b):
+    unique = unique_type([a, b])
+    if unique != Unknown():
+        return unique
+    elif isinstance(a, NoneType):
+        return b if isinstance(b, Maybe) else Maybe(b)
+    elif isinstance(b, NoneType):
+        return a if isinstance(a, Maybe) else Maybe(a)
+    else:
+        return Unknown()
+
+
+def comparable_types(a, b):
+    if a == b or isinstance(a, Unknown) or isinstance(b, Unknown):
+        return True
+    if isinstance(a, Maybe):
+        if isinstance(b, (NoneType, a.subtype)):
+            return True
+    if isinstance(b, Maybe):
+        if isinstance(a, (NoneType, b.subtype)):
+            return True
+    return False
 
 
 def type_subset(types, classes):
@@ -41,36 +56,10 @@ def first_type(types):
     return NoneType
 
 
-def consistent_types(types, allow_maybe=False):
+def consistent_types(types, allow_maybe=True):
     known = known_types(types)
     base_type = first_type(known)
     options = ([base_type, Maybe(base_type), NoneType()]
                 if allow_maybe else [base_type])
     return all(any(typ == x for x in options) for typ in known)
-
-
-def maybe_inferences(test, context):
-    types = {name: context.get_type(name) for name in get_names(test)}
-    maybes = {k: v for k, v in types.items() if isinstance(v, Maybe)}
-
-    if_inferences = {}
-    else_inferences = {}
-    for name, maybe_type in maybes.items():
-        context.begin_scope()
-        context.add_symbol(name, NoneType(), None)
-        none_value = static_evaluate(test, context)
-        context.end_scope()
-        if none_value is False:
-            if_inferences[name] = maybe_type.subtype
-        if none_value is True:
-            else_inferences[name] = maybe_type.subtype
-        context.begin_scope()
-        context.add_symbol(name, maybe_type.subtype, UnknownValue())
-        non_none_value = static_evaluate(test, context)
-        context.end_scope()
-        if non_none_value is False:
-            if_inferences[name] = NoneType()
-        if non_none_value is True:
-            else_inferences[name] = NoneType()
-    return if_inferences, else_inferences
 

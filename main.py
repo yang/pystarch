@@ -104,7 +104,8 @@ class Visitor(ast.NodeVisitor):
             type_sets = (type_sets,)
         if not any(type_set_match(types, x) for x in type_sets):
             got = ', '.join([str(x) for x in types])
-            fmt_set = lambda s: '{' + ', '.join(x.__name__ for x in s) + '}'
+            fmt_set = lambda s: '{' + ', '.join(x.__name__
+                for x in sorted(s)) + '}'
             options = ' or '.join([fmt_set(x) for x in type_sets])
             details = '[{0}] vs {1}'.format(got, options)
             self.warn('type-error', node, details)
@@ -132,11 +133,6 @@ class Visitor(ast.NodeVisitor):
                 self.warn('type-change', node, details)
             self.warn('reassignment', node)
         self._context.add_symbol(name, new_type, static_value)
-
-    def check_assign_name(self, node, name, value):
-        value_type = self.expr_type(value)
-        static_value = self.evaluate(value)
-        self.check_assign_name_type(node, name, value_type, static_value)
 
     def check_assign(self, node, target, value, generator=False):
         assignments = get_assignments(target, value,
