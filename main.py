@@ -2,64 +2,23 @@
 import sys
 import os
 import ast
-from type_objects import NoneType, Bool, Num, Str, List, Dict, Tuple, \
-    Instance, Class, Function, Maybe, Unknown
 from imports import import_source
-from expr import expression_type, call_argtypes, Arguments, get_assignments, \
-    make_argument_scope, get_token, assign_generators, \
-    unify_types, known_types
-from show import show_node
-from context import Context, ExtendedContext, Scope
-from evaluate import static_evaluate, UnknownValue
-from util import get_names
+from backend import expression_type, call_argtypes, Arguments, \
+    get_assignments, make_argument_scope, get_token, assign_generators, \
+    unify_types, known_types, show_node, Context, ExtendedContext, Scope, \
+    static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
+    Tuple, Instance, Class, Function, Maybe, Unknown, first_type, \
+    type_set_match, maybe_inferences
 
 
-def type_subset(types, classes):
-    return all(any(isinstance(t, c) for c in classes) for t in types)
-
-
-def type_set_match(types, classes):
-    known = known_types(types)
-    unmatched = [x for x in classes
-        if not any(isinstance(y, x) for y in types)]
-    unknowns = [x for x in types if isinstance(x, Unknown)]
-    return type_subset(known, classes) and len(unknowns) >= len(unmatched)
-
-
-def first_type(types):
-    for typ in types:
-        if isinstance(typ, Maybe):
-            return typ.subtype
-        elif isinstance(typ, NoneType):
-            continue
-        return typ
-    return NoneType
-
-
-def maybe_inferences(test, context):
-    types = {name: context.get_type(name) for name in get_names(test)}
-    maybes = {k: v for k, v in types.items() if isinstance(v, Maybe)}
-
-    if_inferences = {}
-    else_inferences = {}
-    for name, maybe_type in maybes.items():
-        context.begin_scope()
-        context.add_symbol(name, NoneType(), None)
-        none_value = static_evaluate(test, context)
-        context.end_scope()
-        if none_value is False:
-            if_inferences[name] = maybe_type.subtype
-        if none_value is True:
-            else_inferences[name] = maybe_type.subtype
-        context.begin_scope()
-        context.add_symbol(name, maybe_type.subtype, UnknownValue())
-        non_none_value = static_evaluate(test, context)
-        context.end_scope()
-        if non_none_value is False:
-            if_inferences[name] = NoneType()
-        if non_none_value is True:
-            else_inferences[name] = NoneType()
-    return if_inferences, else_inferences
+def builtin_context():
+    filename = 'builtins.py'
+    context = Context()
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(this_dir, filename)) as builtins_file:
+        source = builtins_file.read()
+    _, _ = analyze(source, filename, context)
+    return context
 
 
 class NodeWarning(object):
@@ -106,16 +65,6 @@ class FunctionEvaluator(object):
         cache_result = (return_type, []) if clear_warnings else result
         self.cache.append((argument_scope, cache_result))
         return result
-
-
-def builtin_context():
-    filename = 'builtins.py'
-    context = Context()
-    this_dir = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(this_dir, filename)) as builtins_file:
-        source = builtins_file.read()
-    _, _ = analyze(source, filename, context)
-    return context
 
 
 class Visitor(ast.NodeVisitor):
@@ -229,7 +178,7 @@ class Visitor(ast.NodeVisitor):
             source, filepath = import_source(name, [source_dir])
             _, scope = analyze(source, filepath)    # ignore warnings
             import_type = Instance('__import__', scope)
-            self._context.add_symbol(name, import_type, UnknownValue())
+            self._context.add_symbol(name, import_type)
 
     def visit_ClassDef(self, node):
         self.begin_scope()
@@ -245,7 +194,7 @@ class Visitor(ast.NodeVisitor):
         # TODO: separate class/static methods and attributes from the rest
         class_type = Class(arguments, return_type, {})
         # TODO: save self.x into scope where "self" is 1st param to init
-        self._context.add_symbol(node.name, class_type, UnknownValue())
+        self._context.add_symbol(node.name, class_type)
 
     def visit_FunctionDef(self, node):
         arguments = Arguments(node.args, ExtendedContext(self._context),
@@ -259,7 +208,7 @@ class Visitor(ast.NodeVisitor):
         return_type = FunctionEvaluator(self._filepath, node.body,
             self._context.copy())
         function_type = Function(arguments, return_type)
-        self._context.add_symbol(node.name, function_type, UnknownValue())
+        self._context.add_symbol(node.name, function_type)
 
     def type_error(self, node, label, got, expected):
         template = '{0} expected type {1} but got {2}'
@@ -407,7 +356,7 @@ class Visitor(ast.NodeVisitor):
         for name in common:
             types = [if_scope.get_type(name), else_scope.get_type(name)]
             unified_type = unify_types(*types)
-            self._context.add_symbol(name, unified_type, UnknownValue())
+            self._context.add_symbol(name, unified_type)
             if isinstance(unified_type, Unknown):
                 if not any(isinstance(x, Unknown) for x in types):
                     self.warn('conditional-type', node, name)
@@ -415,7 +364,7 @@ class Visitor(ast.NodeVisitor):
         return_types = [if_scope.get_return_type() or Unknown(),
                         else_scope.get_return_type() or Unknown()]
         unified_return_type = unify_types(*return_types)
-        self._context.set_return(unified_return_type, UnknownValue())
+        self._context.set_return(unified_return_type)
         if isinstance(unified_return_type, Unknown):
             if not any(isinstance(x, Unknown) for x in return_types):
                 self.warn('conditional-return-type', node)

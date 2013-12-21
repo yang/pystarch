@@ -1,10 +1,10 @@
 
 High Priority
 =============
-Problem: __return__ cannot be treated like a variable, it must be
-    limited to one scope
+Create backend package
+Move consistent_types and check_type logic into backend
+
 EqualityMixin: other.__class__ == self.__class__
-Unwrap maybe in if-else branches
 Unwrap maybe in comprehensions with "if x is not None" conditions
 Use a code coverage tool to make sure everything is covered by tests
 Support calling functions that are defined later (needed for mutual recursion)

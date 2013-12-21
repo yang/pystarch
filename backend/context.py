@@ -111,7 +111,7 @@ class Context(object):
     def apply_type_inferences(self, type_inferences):
         self._type_inferences.update(type_inferences)
 
-    def add_symbol(self, name, symbol_type, value):
+    def add_symbol(self, name, symbol_type, value=UnknownValue()):
         self.get_top_scope().add_symbol(name, symbol_type, value)
 
     def set_return(self, return_type, return_value=UnknownValue()):
