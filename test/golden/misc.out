@@ -29,15 +29,14 @@ testcases/misc.py:35 constant-if-condition "If"
 testcases/misc.py:37 type-change "alice = ..." (Num -> Str)
 testcases/misc.py:37 reassignment "alice = ..."
 testcases/misc.py:38 multiple-return-types "Return" (List(Unknown) -> Str)
+testcases/misc.py:43 inconsistent-types "Eq" (Str, List(Num))
 testcases/misc.py:43 constant-if-condition "If"
-testcases/misc.py:43 inconsitent-types "Eq" (Str, List(Num))
+testcases/misc.py:45 inconsistent-types "Is" (Str, NoneType)
 testcases/misc.py:45 constant-if-condition "If"
-testcases/misc.py:45 inconsitent-types "Is" (Str, NoneType)
 testcases/misc.py:47 constant-if-condition "If"
 testcases/misc.py:49 reassignment "alice = ..."
 testcases/misc.py:50 type-change "alice = ..." (Str -> Num)
 testcases/misc.py:50 reassignment "alice = ..."
-testcases/misc.py:28 constant-if-condition "If"
 testcases/misc.py:28 missing-argument "my_function" (sam)
 testcases/misc.py:28 missing-argument "my_function" (maxi)
 testcases/misc.py:19 type-change "x = ..." (Unknown -> Bool)
@@ -45,8 +44,7 @@ testcases/misc.py:19 reassignment "x = ..."
 testcases/misc.py:22 reassignment "bob = ..."
 testcases/misc.py:22 undefined "sam"
 testcases/misc.py:23 reassignment "globe = ..."
-testcases/misc.py:30 constant-if-condition "If"
-testcases/misc.py:30 inconsitent-types "Eq" (Str, Num)
+testcases/misc.py:30 inconsistent-types "Eq" (Str, Num)
 testcases/misc.py:30 missing-argument "my_function" (sam)
 testcases/misc.py:30 missing-argument "my_function" (maxi)
 testcases/misc.py:19 type-change "x = ..." (Unknown -> Bool)
@@ -54,6 +52,7 @@ testcases/misc.py:19 reassignment "x = ..."
 testcases/misc.py:22 reassignment "bob = ..."
 testcases/misc.py:22 undefined "sam"
 testcases/misc.py:23 reassignment "globe = ..."
+testcases/misc.py:30 constant-if-condition "If"
 testcases/misc.py:68 type-change "i = ..." (Unknown -> Num)
 testcases/misc.py:68 reassignment "i = ..."
 testcases/misc.py:71 type-change "z = ..." (Num -> Dict(Unknown,Unknown))

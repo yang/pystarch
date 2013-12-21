@@ -101,7 +101,7 @@ class FunctionEvaluator(object):
         self.recursion_block = False
         warnings = visitor.warnings()
         scope = self.context.end_scope()
-        return_type = scope.get_type('__return__', NoneType())
+        return_type = scope.get_return_type() or NoneType()
         result = (return_type, warnings)
         cache_result = (return_type, []) if clear_warnings else result
         self.cache.append((argument_scope, cache_result))
@@ -179,20 +179,19 @@ class Visitor(ast.NodeVisitor):
             self.warn('type-error', node, details)
 
     def check_return(self, node, is_yield=False):
-        name = '__return__'
         value_type = self.expr_type(node.value)
         return_type = List(value_type) if is_yield else value_type
         static_value = self.evaluate(node.value)
-        previous_type = self._context.get_type(name)
+        previous_type = self._context.get_return_type()
         if previous_type is None:
-            self._context.add_symbol(name, return_type, static_value)
+            self._context.set_return(return_type, static_value)
             return
         new_type = unify_types(previous_type, return_type)
         if new_type == Unknown():
             details = '{0} -> {1}'.format(previous_type, return_type)
             self.warn('multiple-return-types', node, details)
         else:
-            self._context.add_symbol(name, new_type, static_value)
+            self._context.set_return(new_type, static_value)
 
     def check_assign_name_type(self, node, name, new_type, static_value):
         previous_type = self._context.get_type(name)
@@ -375,10 +374,10 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_If(self, node):
-        self.generic_visit(node.test)
+        self.visit(node.test)
         self.check_type(node.test, Bool)
         test_value = static_evaluate(node.test, ExtendedContext(self._context))
-        if not isinstance(test_value, Unknown):
+        if not isinstance(test_value, UnknownValue):
             self.warn('constant-if-condition', node)
 
         ext_ctx = ExtendedContext(self._context)
@@ -401,22 +400,25 @@ class Visitor(ast.NodeVisitor):
 
         diffs = set(if_scope.names()) ^ set(else_scope.names())
         for diff in diffs:
-            if diff == '__return__':
-                if '__return__' in if_scope:
-                    self._context.copy_symbol(if_scope, '__return__')
-                else:
-                    self._context.copy_symbol(else_scope, '__return__')
-            elif diff not in self._context:
+            if diff not in self._context:
                 self.warn('conditionally-assigned', node, diff)
 
         common = set(if_scope.names()) | set(else_scope.names())
         for name in common:
             types = [if_scope.get_type(name), else_scope.get_type(name)]
-            unified_type = unify_types(types[0], types[1])
+            unified_type = unify_types(*types)
             self._context.add_symbol(name, unified_type, UnknownValue())
             if isinstance(unified_type, Unknown):
                 if not any(isinstance(x, Unknown) for x in types):
                     self.warn('conditional-type', node, name)
+
+        return_types = [if_scope.get_return_type() or Unknown(),
+                        else_scope.get_return_type() or Unknown()]
+        unified_return_type = unify_types(*return_types)
+        self._context.set_return(unified_return_type, UnknownValue())
+        if isinstance(unified_return_type, Unknown):
+            if not any(isinstance(x, Unknown) for x in return_types):
+                self.warn('conditional-return-type', node)
 
     def visit_While(self, node):
         self.check_type(node.test, Bool)

@@ -1,7 +1,7 @@
 import expr
 from functools import partial
 from operators import get_operator_function
-from type_objects import Instance
+from type_objects import Instance, Unknown
 
 
 def get_token(node):
@@ -26,10 +26,14 @@ def operator_evaluate(operator, *args):
 def comparison_evaluate(operator, left, right):
     left_value, left_type = left
     right_value, right_type = right
+    if any(isinstance(x, Unknown) for x in [left_type, right_type]):
+        return UnknownValue()
     if operator in ['Is', 'Eq'] and left_type != right_type:
         return False
     if operator in ['IsNot', 'NotEq'] and left_type != right_type:
         return True
+    if any(isinstance(x, UnknownValue) for x in [left_value, right_value]):
+        return UnknownValue()
     return operator_evaluate(operator, left_value, right_value)
 
 

@@ -34,6 +34,8 @@ def format_symbol(symbol):
 class Scope(object):
     def __init__(self):
         self._symbols = {}
+        self._return_type = None
+        self._return_value = None
 
     def __str__(self):
         fmt = lambda name, sym: '{0} {1}'.format(name, format_symbol(sym))
@@ -62,6 +64,16 @@ class Scope(object):
 
     def get_value(self, name, default=UnknownValue()):
         return self._symbols[name][1] if name in self._symbols else default
+
+    def set_return(self, return_type, return_value=UnknownValue()):
+        self._return_type = return_type
+        self._return_value = return_value
+
+    def get_return_type(self):
+        return self._return_type
+
+    def get_return_value(self):
+        return self._return_value
 
     def merge(self, scope):
         self._symbols.update(scope._symbols)
@@ -101,6 +113,15 @@ class Context(object):
 
     def add_symbol(self, name, symbol_type, value):
         self.get_top_scope().add_symbol(name, symbol_type, value)
+
+    def set_return(self, return_type, return_value=UnknownValue()):
+        self.get_top_scope().set_return(return_type, return_value)
+
+    def get_return_type(self):
+        return self.get_top_scope().get_return_type()
+
+    def get_return_value(self):
+        return self.get_top_scope().get_return_value()
 
     def copy_symbol(self, scope, name):
         self.get_top_scope().copy_symbol(scope, name)
