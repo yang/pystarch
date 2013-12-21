@@ -9,7 +9,7 @@ from expr import expression_type, call_argtypes, Arguments, get_assignments, \
     make_argument_scope, get_token, assign_generators, \
     unify_types, known_types
 from show import show_node
-from context import Context, ExtendedContext
+from context import Context, ExtendedContext, Scope
 from evaluate import static_evaluate, UnknownValue
 from util import get_names
 
@@ -34,6 +34,32 @@ def first_type(types):
             continue
         return typ
     return NoneType
+
+
+def maybe_inferences(test, context):
+    types = {name: context.get_type(name) for name in get_names(test)}
+    maybes = {k: v for k, v in types.items() if isinstance(v, Maybe)}
+
+    if_inferences = {}
+    else_inferences = {}
+    for name, maybe_type in maybes.items():
+        context.begin_scope()
+        context.add_symbol(name, NoneType(), None)
+        none_value = static_evaluate(test, context)
+        context.end_scope()
+        if none_value is False:
+            if_inferences[name] = maybe_type.subtype
+        if none_value is True:
+            else_inferences[name] = maybe_type.subtype
+        context.begin_scope()
+        context.add_symbol(name, maybe_type.subtype, UnknownValue())
+        non_none_value = static_evaluate(test, context)
+        context.end_scope()
+        if non_none_value is False:
+            if_inferences[name] = NoneType()
+        if non_none_value is True:
+            else_inferences[name] = NoneType()
+    return if_inferences, else_inferences
 
 
 class NodeWarning(object):
@@ -354,43 +380,43 @@ class Visitor(ast.NodeVisitor):
         test_value = static_evaluate(node.test, ExtendedContext(self._context))
         if not isinstance(test_value, Unknown):
             self.warn('constant-if-condition', node)
-        names = get_names(node.test)
-        types = {name: self._context.get_type(name) for name in names}
-        maybes = {k: v for k, v in types.items() if isinstance(v, Maybe)}
 
-        assumptions = {}
-        else_assumptions = {}
-        context = ExtendedContext(self._context)
-        for name, maybe_type in maybes.items():
-            context.add_symbol(name, NoneType(), None)
-            none_value = static_evaluate(node.test, context)
-            context.remove_symbol(name)
-            if none_value is False:
-                assumptions[name] = maybe_type.subtype
-            if none_value is True:
-                else_assumptions[name] = maybe_type.subtype
-            context.add_symbol(name, maybe_type.subtype, UnknownValue())
-            non_none_value = static_evaluate(node.test, context)
-            context.remove_symbol(name)
-            if non_none_value is False:
-                assumptions[name] = NoneType()
-            if non_none_value is True:
-                else_assumptions[name] = NoneType()
-        print(assumptions)
-        print(else_assumptions)
+        ext_ctx = ExtendedContext(self._context)
+        if_inferences, else_inferences = maybe_inferences(node.test, ext_ctx)
 
         self.begin_scope()
-        for name, typ in assumptions.items():
-            self._context.add_symbol(name, typ, UnknownValue())
+        self._context.apply_type_inferences(if_inferences)
         for stmt in node.body:
-            self.generic_visit(stmt)
-        self.end_scope()
-        self.begin_scope()
-        for name, typ in else_assumptions.items():
-            self._context.add_symbol(name, typ, UnknownValue())
-        for stmt in node.orelse:
-            self.generic_visit(stmt)
-        self.end_scope()
+            self.visit(stmt)
+        if_scope = self.end_scope()
+
+        if node.orelse:
+            self.begin_scope()
+            self._context.apply_type_inferences(else_inferences)
+            for stmt in node.orelse:
+                self.visit(stmt)
+            else_scope = self.end_scope()
+        else:
+            else_scope = Scope()
+
+        diffs = set(if_scope.names()) ^ set(else_scope.names())
+        for diff in diffs:
+            if diff == '__return__':
+                if '__return__' in if_scope:
+                    self._context.copy_symbol(if_scope, '__return__')
+                else:
+                    self._context.copy_symbol(else_scope, '__return__')
+            elif diff not in self._context:
+                self.warn('conditionally-assigned', node, diff)
+
+        common = set(if_scope.names()) | set(else_scope.names())
+        for name in common:
+            types = [if_scope.get_type(name), else_scope.get_type(name)]
+            unified_type = unify_types(types[0], types[1])
+            self._context.add_symbol(name, unified_type, UnknownValue())
+            if isinstance(unified_type, Unknown):
+                if not any(isinstance(x, Unknown) for x in types):
+                    self.warn('conditional-type', node, name)
 
     def visit_While(self, node):
         self.check_type(node.test, Bool)

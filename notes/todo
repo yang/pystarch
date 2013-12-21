@@ -1,8 +1,8 @@
 
 High Priority
 =============
-Need to merge __return__ and symbols common to if and else into
-    current scope (make scope layer for each)
+Problem: __return__ cannot be treated like a variable, it must be
+    limited to one scope
 EqualityMixin: other.__class__ == self.__class__
 Unwrap maybe in if-else branches
 Unwrap maybe in comprehensions with "if x is not None" conditions

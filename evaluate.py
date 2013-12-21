@@ -1,6 +1,5 @@
 import expr
 from functools import partial
-from numbers import Number
 from operators import get_operator_function
 from type_objects import Instance
 
@@ -31,7 +30,7 @@ def comparison_evaluate(operator, left, right):
         return False
     if operator in ['IsNot', 'NotEq'] and left_type != right_type:
         return True
-    return operator_evaluate(operator, left_type, right_type)
+    return operator_evaluate(operator, left_value, right_value)
 
 
 # try to evaluate an expression without executing
