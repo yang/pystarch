@@ -13,3 +13,8 @@ def f(x):
 
 x06 = f(1)
 x07 = x06 is not None
+
+if x06 is not None:
+    x08 = x06 + 2
+else:
+    x09 = x06 + 3

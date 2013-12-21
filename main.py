@@ -130,7 +130,7 @@ class Visitor(ast.NodeVisitor):
         for typ in known:
             if not any(typ == x for x in options):
                 details = ', '.join([str(x) for x in types])
-                self.warn('inconsitent-types', root_node, details)
+                self.warn('inconsistent-types', root_node, details)
                 return
 
     def check_type(self, node, types, override=None):
@@ -349,27 +349,48 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_If(self, node):
+        self.generic_visit(node.test)
+        self.check_type(node.test, Bool)
         test_value = static_evaluate(node.test, ExtendedContext(self._context))
         if not isinstance(test_value, Unknown):
             self.warn('constant-if-condition', node)
         names = get_names(node.test)
         types = {name: self._context.get_type(name) for name in names}
         maybes = {k: v for k, v in types.items() if isinstance(v, Maybe)}
-        if maybes:
-            print(maybes)
+
         assumptions = {}
         else_assumptions = {}
+        context = ExtendedContext(self._context)
         for name, maybe_type in maybes.items():
-            context = ExtendedContext(self._context)
             context.add_symbol(name, NoneType(), None)
-            if static_evaluate(node.test, context) is False:
-                assumptions[name] = maybe_type.subtype
+            none_value = static_evaluate(node.test, context)
             context.remove_symbol(name)
+            if none_value is False:
+                assumptions[name] = maybe_type.subtype
+            if none_value is True:
+                else_assumptions[name] = maybe_type.subtype
             context.add_symbol(name, maybe_type.subtype, UnknownValue())
-            if static_evaluate(node.test, context) is False:
+            non_none_value = static_evaluate(node.test, context)
+            context.remove_symbol(name)
+            if non_none_value is False:
                 assumptions[name] = NoneType()
-        self.check_type(node.test, Bool)
-        self.generic_visit(node)
+            if non_none_value is True:
+                else_assumptions[name] = NoneType()
+        print(assumptions)
+        print(else_assumptions)
+
+        self.begin_scope()
+        for name, typ in assumptions.items():
+            self._context.add_symbol(name, typ, UnknownValue())
+        for stmt in node.body:
+            self.generic_visit(stmt)
+        self.end_scope()
+        self.begin_scope()
+        for name, typ in else_assumptions.items():
+            self._context.add_symbol(name, typ, UnknownValue())
+        for stmt in node.orelse:
+            self.generic_visit(stmt)
+        self.end_scope()
 
     def visit_While(self, node):
         self.check_type(node.test, Bool)
@@ -397,7 +418,8 @@ class Visitor(ast.NodeVisitor):
         elif operator == 'Add':
             if len(known) > 1:
                 if not all(isinstance(x, Tuple) for x in known):
-                    self.warn('inconsistent-types', node)
+                    details = ', '.join([str(x) for x in types])
+                    self.warn('inconsistent-types', node, details)
             elif len(known) == 1:
                 self.check_type(node, (Num, Str, List, Tuple),
                     override=iter(known).next())

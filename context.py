@@ -45,7 +45,8 @@ class Scope(object):
         return name in self._symbols
 
     def add_symbol(self, name, typ, value):
-        self._symbols[name] = (typ, value)
+        val = None if typ == NoneType() else value
+        self._symbols[name] = (typ, val)
 
     def remove_symbol(self, name):
         del self._symbols[name]
