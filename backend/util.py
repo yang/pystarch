@@ -41,6 +41,14 @@ def first_type(types):
     return NoneType
 
 
+def consistent_types(types, allow_maybe=False):
+    known = known_types(types)
+    base_type = first_type(known)
+    options = ([base_type, Maybe(base_type), NoneType()]
+                if allow_maybe else [base_type])
+    return all(any(typ == x for x in options) for typ in known)
+
+
 def maybe_inferences(test, context):
     types = {name: context.get_type(name) for name in get_names(test)}
     maybes = {k: v for k, v in types.items() if isinstance(v, Maybe)}

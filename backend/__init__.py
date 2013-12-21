@@ -4,4 +4,5 @@ from evaluate import static_evaluate, UnknownValue
 from context import Context, ExtendedContext, Scope
 from type_objects import NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown
-from util import first_type, type_set_match, maybe_inferences
+from util import first_type, type_set_match, maybe_inferences, \
+    consistent_types

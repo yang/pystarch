@@ -8,8 +8,8 @@ from backend import expression_type, call_argtypes, Arguments, \
     get_assignments, make_argument_scope, get_token, assign_generators, \
     unify_types, known_types, Context, ExtendedContext, Scope, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
-    Tuple, Instance, Class, Function, Maybe, Unknown, first_type, \
-    type_set_match, maybe_inferences
+    Tuple, Instance, Class, Function, Maybe, Unknown, \
+    type_set_match, maybe_inferences, consistent_types
 
 
 def builtin_context():
@@ -86,15 +86,9 @@ class Visitor(ast.NodeVisitor):
 
     def consistent_types(self, root_node, nodes, allow_maybe=False):
         types = [self.expr_type(node) for node in nodes]
-        known = known_types(types)
-        base_type = first_type(known)
-        options = ([base_type, Maybe(base_type), NoneType()]
-                    if allow_maybe else [base_type])
-        for typ in known:
-            if not any(typ == x for x in options):
-                details = ', '.join([str(x) for x in types])
-                self.warn('inconsistent-types', root_node, details)
-                return
+        if not consistent_types(types, allow_maybe):
+            details = ', '.join([str(x) for x in types])
+            self.warn('inconsistent-types', root_node, details)
 
     def check_type(self, node, types, override=None):
         if not isinstance(types, tuple):
