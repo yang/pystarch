@@ -195,6 +195,18 @@ def unify_types(a, b):
         return Unknown()
 
 
+def comparable_types(a, b):
+    if a == b or isinstance(a, Unknown) or isinstance(b, Unknown):
+        return True
+    if isinstance(a, Maybe):
+        if isinstance(b, (NoneType, a.subtype)):
+            return True
+    if isinstance(b, Maybe):
+        if isinstance(a, (NoneType, b.subtype)):
+            return True
+    return False
+
+
 # Note: "True" and "False" evalute to Bool because they are symbol
 # names that have their types builtin to the default context. Similarly,
 # "None" has type NoneType.

@@ -5,9 +5,8 @@ x03 Bool False
 x04 Bool False
 x05 Bool True
 x06 Maybe(Num)
-x07 Bool True
+x07 Bool
 x08 Num
 
 testcases/static.py:9 constant-if-condition "If"
-testcases/static.py:17 constant-if-condition "If"
 testcases/static.py:20 inconsistent-types "Add" (NoneType, Num)
