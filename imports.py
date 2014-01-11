@@ -1,4 +1,4 @@
-import os, imp, marshal, meta
+import sys, os, imp, marshal, meta
 
 
 def pyc_source(pyc_contents):
@@ -7,26 +7,40 @@ def pyc_source(pyc_contents):
     return meta.dump_python_source(meta.decompile(code))
 
 
-def import_source(import_name, paths=None):
-    # TODO: find_module does not support heirarchical module names
-    module_file, module_path, _ = imp.find_module(import_name, paths)
-    if module_file is None:
-        raise RuntimeError('Could not find module source for ' + import_name)
-    if module_path.endswith('.py'):
-        source = module_file.read()
+def get_module_source_path(import_name, paths=[]):
+    python_paths = paths + sys.path[1:]  # sys.path includes PYTHONPATH env var
+    module_file, module_path, _ = imp.find_module(import_name, python_paths)
+    if module_file:
         module_file.close()
-        return source, module_path
-    elif module_path.endswith(('.pyc', '.pyo')):
-        py_path = module_path[:-1]
-        if os.path.exists(py_path):
-            module_file.close()
-            with open(py_path) as py_file:
-                source = py_file.read()
-            return source, module_path
+    if module_file is None and module_path == '':
+        # module does not live in a file
+        raise RuntimeError('Could not find module source for ' + import_name)
+    elif module_file is None:   # probably a package
+        if os.path.isdir(module_path):
+            for extension in ['py', 'pyc', 'pyo']:
+                filepath = os.path.join(module_path, '__init__.' + extension)
+                if os.path.exists(filepath):
+                    return filepath
+            raise RuntimeError('Could not find __init__.py for '
+                               + import_name)
         else:
-            data = module_file.read()
-            module_file.close()
-            return pyc_source(data), module_path
+            raise RuntimeError('Unrecognized module type')
+    return module_path
+
+
+def import_source(import_name, paths=[]):
+    module_path = get_module_source_path(import_name, paths)
+    if module_path.endswith('.py'):
+        with open(module_path) as module_file:
+            return module_file.read(), module_path
+    elif module_path.endswith(('.pyc', '.pyo')):
+        py_path = module_path[:-1]  # look for ".py" file in same dir
+        if os.path.exists(py_path):
+            with open(py_path) as py_file:
+                return py_file.read(), module_path
+        else:
+            with open(module_path) as module_file:
+                return pyc_source(module_file.read()), module_path
     else:
         raise RuntimeError('Unrecognized extension: ' + module_path)
 
