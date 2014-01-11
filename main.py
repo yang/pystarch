@@ -2,6 +2,8 @@
 import sys
 import os
 import ast
+import cPickle as pickle
+from hashlib import sha256
 from imports import import_source
 from warning import NodeWarning
 from backend import expression_type, call_argtypes, Arguments, \
@@ -10,6 +12,10 @@ from backend import expression_type, call_argtypes, Arguments, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
     type_set_match, maybe_inferences, unifiable_types
+
+
+NAME = 'strictpy'
+__version__ = '1.0.0'
 
 
 def builtin_context():
@@ -25,8 +31,18 @@ def builtin_context():
 def import_module(name, current_filepath):
     source_dir = os.path.abspath(os.path.dirname(current_filepath))
     source, filepath, is_package = import_source(name, [source_dir])
-    _, scope = analyze(source, filepath)    # ignore warnings
-    return Instance('object', scope), filepath, is_package
+    cache_filename = sha256(filepath + '~' + source).hexdigest()
+    cache_filepath = os.path.join(os.sep, 'var', 'cache', NAME,
+                                  __version__, cache_filename)
+    if os.path.exists(cache_filepath):
+        with open(cache_filepath, 'rb') as cache_file:
+            return pickle.load(cache_file), filepath, is_package
+    else:
+        _, scope = analyze(source, filepath)    # ignore warnings
+        module = Instance('object', scope)
+        with open(cache_filepath, 'wb') as cache_file:
+            pickle.dump(module, cache_file, pickle.HIGHEST_PROTOCOL)
+        return module, filepath, is_package
 
 
 # TODO: implement explicit relative imports like "import ..module"
@@ -241,7 +257,7 @@ class Visitor(ast.NodeVisitor):
     def check_argument_type(self, node, label, got, expected):
         assert isinstance(expected, list)
         if Unknown() not in expected and got not in expected + [NoneType()]:
-            self.type_error(node, 'Argument ' + label, got, expected)
+            self.type_error(node, 'Argument ' + str(label), got, expected)
 
     def visit_Call(self, node):
         if not hasattr(node.func, 'id'):

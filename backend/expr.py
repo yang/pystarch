@@ -151,6 +151,8 @@ def get_assignments(target, value, context, generator=False):
         assignments = zip(names, assign_types, assign_values)
     elif target_token == 'Name':
         assignments = [(target.id, assign_type, static_value)]
+    elif target_token == 'Subscript':
+        assignments = []        # TODO: implement this
     else:
         raise RuntimeError('Unrecognized assignment target ' + target_token)
     return assignments
@@ -293,4 +295,6 @@ def expression_type(node, context):
         return List(unify_types([recur(elt) for elt in node.elts]))
     if token == 'Tuple':
         return Tuple([recur(element) for element in node.elts])
+    if token == 'NoneType':
+        return NoneType()
     raise Exception('expression_type does not recognize ' + token)
