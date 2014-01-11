@@ -1,4 +1,4 @@
-import testimport
+
 
 globe = 1
 
@@ -68,6 +68,5 @@ for i in (1,2,3):
     i += 1
 
 
-z = testimport.imported
 with open('side_effect', 'w') as f:
     f.write('uh oh')

@@ -8,13 +8,12 @@ func2 Function()
 globe Num 1
 instance Unknown
 my_function Function(sam: Function(x: Unknown), maxi: Function(obj: Unknown))
-testimport Instance(object)
 types Function(, args: Tuple, kwargs: Dict)
 v List(Unknown)
 w Maybe(Num)
 x Unknown
 y Unknown
-z Dict(Unknown,Unknown) {}
+z Num
 
 testcases/misc.py:55 type-change "a = ..." (Num -> List(Num))
 testcases/misc.py:55 reassignment "a = ..."
@@ -55,6 +54,4 @@ testcases/misc.py:23 reassignment "globe = ..."
 testcases/misc.py:30 constant-if-condition "If"
 testcases/misc.py:68 type-change "i = ..." (Unknown -> Num)
 testcases/misc.py:68 reassignment "i = ..."
-testcases/misc.py:71 type-change "z = ..." (Num -> Dict(Unknown,Unknown))
-testcases/misc.py:71 reassignment "z = ..."
 builtins.py:256 not-a-function "file" (file)

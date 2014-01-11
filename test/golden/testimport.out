@@ -1,1 +1,5 @@
 imported Dict(Unknown,Unknown) {}
+my_integer Num
+my_other_integer Num
+
+testcases/testimport.py:3 import-failed "Import" (email: Unrecognized assignment target Subscript)

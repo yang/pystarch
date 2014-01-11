@@ -24,22 +24,30 @@ def builtin_context():
 
 def import_module(name, current_filepath):
     source_dir = os.path.abspath(os.path.dirname(current_filepath))
-    source, filepath = import_source(name, [source_dir])
+    source, filepath, is_package = import_source(name, [source_dir])
     _, scope = analyze(source, filepath)    # ignore warnings
-    return Instance('object', scope), filepath
+    return Instance('object', scope), filepath, is_package
 
 
+# TODO: implement explicit relative imports like "import ..module"
 def import_chain(fully_qualified_name, asname, import_scope, current_filepath):
     scope = import_scope
     filepath = current_filepath
+    is_package = True
     for name in fully_qualified_name.split('.'):
-        module, filepath = import_module(name, filepath)
-        if asname is None:
-            scope.add_symbol(name, module)
-        scope = module.attributes
+        if scope is None:
+            raise RuntimeError('Cannot import ' + fully_qualified_name)
+        if is_package:
+            import_type, filepath, is_package = import_module(name, filepath)
+            if asname is None:
+                scope.add_symbol(name, import_type)
+            scope = import_type.attributes
+        else:
+            import_type = scope.get_type(name)
+            scope = None
     if asname is not None:
-        import_scope.add_symbol(asname, module)
-    return module, filepath
+        import_scope.add_symbol(asname, import_type)
+    return import_type
 
 
 class FunctionEvaluator(object):
@@ -170,14 +178,25 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
         # don't end scope so that caller can see what is in the scope
 
-    # TODO: implement explicit relative imports like "import ..module"
     def visit_Import(self, node):
         scope = self._context.get_top_scope()
         for alias in node.names:
-            import_chain(alias.name, alias.asname, scope, self._filepath)
+            try:
+                import_chain(alias.name, alias.asname, scope, self._filepath)
+            except RuntimeError as failure:
+                self.warn('import-failed', node,
+                          alias.name + ': ' + str(failure))
 
     def visit_ImportFrom(self, node):
-        module, _ = import_chain(node.module, None, Scope(), self._filepath)
+        try:
+            module = import_chain(node.module, None, Scope(), self._filepath)
+        except RuntimeError as failure:
+            self.warn('import-failed', node, node.module + ': ' + str(failure))
+            return
+        if not isinstance(module, Instance):
+            self.warn('invalid-import', node, node.module)
+            return
+
         for alias in node.names:
             symbol_name = alias.asname or alias.name
             symbol_type = module.attributes.get_type(alias.name)
