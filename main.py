@@ -26,7 +26,20 @@ def import_module(name, current_filepath):
     source_dir = os.path.abspath(os.path.dirname(current_filepath))
     source, filepath = import_source(name, [source_dir])
     _, scope = analyze(source, filepath)    # ignore warnings
-    return Instance('object', scope)
+    return Instance('object', scope), filepath
+
+
+def import_chain(fully_qualified_name, asname, import_scope, current_filepath):
+    scope = import_scope
+    filepath = current_filepath
+    for name in fully_qualified_name.split('.'):
+        module, filepath = import_module(name, filepath)
+        if asname is None:
+            scope.add_symbol(name, module)
+        scope = module.attributes
+    if asname is not None:
+        import_scope.add_symbol(asname, module)
+    return module, filepath
 
 
 class FunctionEvaluator(object):
@@ -157,14 +170,14 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
         # don't end scope so that caller can see what is in the scope
 
+    # TODO: implement explicit relative imports like "import ..module"
     def visit_Import(self, node):
+        scope = self._context.get_top_scope()
         for alias in node.names:
-            module = import_module(alias.name, self._filepath)
-            symbol_name = alias.asname or alias.name
-            self._context.add_symbol(symbol_name, module)
+            import_chain(alias.name, alias.asname, scope, self._filepath)
 
     def visit_ImportFrom(self, node):
-        module = import_module(node.module, self._filepath)
+        module, _ = import_chain(node.module, None, Scope(), self._filepath)
         for alias in node.names:
             symbol_name = alias.asname or alias.name
             symbol_type = module.attributes.get_type(alias.name)
