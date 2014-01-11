@@ -22,6 +22,13 @@ def builtin_context():
     return context
 
 
+def import_module(name, current_filepath):
+    source_dir = os.path.abspath(os.path.dirname(current_filepath))
+    source, filepath = import_source(name, [source_dir])
+    _, scope = analyze(source, filepath)    # ignore warnings
+    return Instance('object', scope)
+
+
 class FunctionEvaluator(object):
     def __init__(self, filepath, body_node, def_context):
         self.filepath = filepath
@@ -151,13 +158,17 @@ class Visitor(ast.NodeVisitor):
         # don't end scope so that caller can see what is in the scope
 
     def visit_Import(self, node):
-        source_dir = os.path.abspath(os.path.dirname(self._filepath))
         for alias in node.names:
-            name = alias.name
-            source, filepath = import_source(name, [source_dir])
-            _, scope = analyze(source, filepath)    # ignore warnings
-            import_type = Instance('__import__', scope)
-            self._context.add_symbol(name, import_type)
+            module = import_module(alias.name, self._filepath)
+            symbol_name = alias.asname or alias.name
+            self._context.add_symbol(symbol_name, module)
+
+    def visit_ImportFrom(self, node):
+        module = import_module(node.module, self._filepath)
+        for alias in node.names:
+            symbol_name = alias.asname or alias.name
+            symbol_type = module.attributes.get_type(alias.name)
+            self._context.add_symbol(symbol_name, symbol_type)
 
     def visit_ClassDef(self, node):
         self.begin_scope()

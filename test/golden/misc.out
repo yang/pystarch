@@ -8,7 +8,7 @@ func2 Function()
 globe Num 1
 instance Unknown
 my_function Function(sam: Function(x: Unknown), maxi: Function(obj: Unknown))
-testimport Instance(__import__)
+testimport Instance(object)
 types Function(, args: Tuple, kwargs: Dict)
 v List(Unknown)
 w Maybe(Num)
