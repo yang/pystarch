@@ -8,8 +8,8 @@ from backend import expression_type, call_argtypes, Arguments, \
     get_assignments, make_argument_scope, get_token, assign_generators, \
     unify_types, known_types, Context, ExtendedContext, Scope, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
-    Tuple, Instance, Class, Function, Maybe, Unknown, \
-    type_set_match, maybe_inferences, consistent_types
+    Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
+    type_set_match, maybe_inferences, unifiable_types
 
 
 def builtin_context():
@@ -84,9 +84,9 @@ class Visitor(ast.NodeVisitor):
     def evaluate(self, node):
         return static_evaluate(node, ExtendedContext(self._context))
 
-    def consistent_types(self, root_node, nodes, allow_maybe=False):
+    def consistent_types(self, check_func, root_node, nodes):
         types = [self.expr_type(node) for node in nodes]
-        if not consistent_types(types, allow_maybe):
+        if not check_func(types):
             details = ', '.join([str(x) for x in types])
             self.warn('inconsistent-types', root_node, details)
 
@@ -118,7 +118,7 @@ class Visitor(ast.NodeVisitor):
         if previous_type is None:
             self._context.set_return(return_type, static_value)
             return
-        new_type = unify_types(previous_type, return_type)
+        new_type = unify_types([previous_type, return_type])
         if new_type == Unknown():
             details = '{0} -> {1}'.format(previous_type, return_type)
             self.warn('multiple-return-types', node, details)
@@ -138,7 +138,8 @@ class Visitor(ast.NodeVisitor):
         assignments = get_assignments(target, value,
             ExtendedContext(self._context), generator=generator)
         for name, assigned_type, static_value in assignments:
-            self.check_assign_name_type(node, name, assigned_type, static_value)
+            self.check_assign_name_type(node, name, assigned_type,
+                                        static_value)
 
     def visit_Name(self, node):
         if self._context.get_type(node.id) is None:
@@ -240,7 +241,7 @@ class Visitor(ast.NodeVisitor):
         if isinstance(func_type, Function): # skip class constructors
             argument_scope = make_argument_scope(node, func_type.arguments,
                 ExtendedContext(self._context))
-            return_type, warnings = func_type.return_type(argument_scope, True)
+            _, warnings = func_type.return_type(argument_scope, True)
             self._warnings.extend(warnings)
 
         self.generic_visit(node)
@@ -269,10 +270,11 @@ class Visitor(ast.NodeVisitor):
             else:
                 rhs_type = self.expr_type(node.comparators[0])
                 if isinstance(rhs_type, List):
-                    self.consistent_types(node,
-                        [node.left, rhs_type.item_type])
+                    self.consistent_types(comparable_types, node,
+                                          [node.left, rhs_type.item_type])
                 elif isinstance(rhs_type, Dict):
-                    self.consistent_types(node, [node.left, rhs_type.key_type])
+                    self.consistent_types(comparable_types, node,
+                                          [node.left, rhs_type.key_type])
                 elif not isinstance(rhs_type, Unknown):
                     self.warn('in-operator-argument-not-list-or-dict', node)
         elif any(get_token(op) in ['Is', 'IsNot'] for op in node.ops):
@@ -284,9 +286,11 @@ class Visitor(ast.NodeVisitor):
                 rhs_type = self.expr_type(rhs)
                 if not (isinstance(lhs_type, Maybe)
                         and isinstance(rhs_type, NoneType)):
-                    self.consistent_types(node, [node.left, rhs])
+                    self.consistent_types(comparable_types, node,
+                                          [node.left, rhs])
         else:
-            self.consistent_types(node, [node.left] + node.comparators)
+            self.consistent_types(comparable_types, node,
+                                  [node.left] + node.comparators)
         self.generic_visit(node)
 
     def visit_BoolOp(self, node):
@@ -333,7 +337,7 @@ class Visitor(ast.NodeVisitor):
         common = set(if_scope.names()) | set(else_scope.names())
         for name in common:
             types = [if_scope.get_type(name), else_scope.get_type(name)]
-            unified_type = unify_types(*types)
+            unified_type = unify_types(types)
             self._context.add_symbol(name, unified_type)
             if isinstance(unified_type, Unknown):
                 if not any(isinstance(x, Unknown) for x in types):
@@ -341,7 +345,7 @@ class Visitor(ast.NodeVisitor):
 
         return_types = [if_scope.get_return_type() or Unknown(),
                         else_scope.get_return_type() or Unknown()]
-        unified_return_type = unify_types(*return_types)
+        unified_return_type = unify_types(return_types)
         self._context.set_return(unified_return_type)
         if isinstance(unified_return_type, Unknown):
             if not any(isinstance(x, Unknown) for x in return_types):
@@ -397,7 +401,7 @@ class Visitor(ast.NodeVisitor):
 
     def visit_IfExp(self, node):
         self.check_type(node.test, Bool)
-        self.consistent_types(node, [node.body, node.orelse], allow_maybe=True)
+        self.consistent_types(unifiable_types, node, [node.body, node.orelse])
         self.generic_visit(node)
 
     def visit_For(self, node):
@@ -416,14 +420,14 @@ class Visitor(ast.NodeVisitor):
         self.end_scope()
 
     def visit_List(self, node):
-        self.consistent_types(node, node.elts)
+        self.consistent_types(unifiable_types, node, node.elts)
 
     def visit_Dict(self, node):
-        self.consistent_types(node, node.keys)
-        self.consistent_types(node, node.values)
+        self.consistent_types(unifiable_types, node, node.keys)
+        self.consistent_types(unifiable_types, node, node.values)
 
     def visit_Set(self, node):
-        self.consistent_types(node, node.elts)
+        self.consistent_types(unifiable_types, node, node.elts)
 
     def visit_ListComp(self, node):
         self.begin_scope()

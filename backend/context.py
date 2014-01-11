@@ -1,3 +1,4 @@
+import copy
 from type_objects import NoneType, Bool
 from evaluate import UnknownValue
 
@@ -36,6 +37,9 @@ class Scope(object):
         self._symbols = {}
         self._return_type = None
         self._return_value = None
+
+    def symbols(self):
+        return copy.copy(self._symbols)
 
     def __str__(self):
         fmt = lambda name, sym: '{0} {1}'.format(name, format_symbol(sym))
@@ -76,7 +80,7 @@ class Scope(object):
         return self._return_value
 
     def merge(self, scope):
-        self._symbols.update(scope._symbols)
+        self._symbols.update(scope.symbols())
 
 
 class Context(object):

@@ -1,9 +1,6 @@
 
 High Priority
 =============
-Create backend package
-Move consistent_types and check_type logic into backend
-
 EqualityMixin: other.__class__ == self.__class__
 Unwrap maybe in comprehensions with "if x is not None" conditions
 Use a code coverage tool to make sure everything is covered by tests
@@ -46,6 +43,7 @@ Cache results of imports for speed (/var/cache/...)
 Optimize function return type evaluation when return type can be determined
     while processing the definition
 Warn when function is never called if it starts with an underscore
+Automatically add type annotations to function definitions
 
 Limitations
 ===========

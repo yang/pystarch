@@ -30,10 +30,10 @@ def comparison_evaluate(operator, left, right):
     if any(isinstance(x, Unknown) for x in [left_type, right_type]):
         return UnknownValue()
     if operator in ['Is', 'Eq']:
-        if not util.comparable_types(left_type, right_type):
+        if not util.comparable_types([left_type, right_type]):
             return False
     if operator in ['IsNot', 'NotEq']:
-        if not util.comparable_types(left_type, right_type):
+        if not util.comparable_types([left_type, right_type]):
             return True
     if any(isinstance(x, UnknownValue) for x in [left_value, right_value]):
         return UnknownValue()
@@ -86,5 +86,6 @@ def static_evaluate(node, context):
     if token == 'Attribute':
         value_type = expr.expression_type(node.value, context)
         if isinstance(value_type, Instance):
+            # pylint: disable=maybe-no-member
             return value_type.attributes.get_value(node.attr, UnknownValue())
     return UnknownValue()

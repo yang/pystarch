@@ -139,7 +139,8 @@ def get_assignments(target, value, context, generator=False):
     target_token = get_token(target)
     if target_token in ('Tuple', 'List'):
         names = [element.id for element in target.elts]
-        values = static_value if isinstance(static_value, (Tuple, List)) else []
+        values = static_value if isinstance(static_value,
+                                            (Tuple, List)) else []
         assign_values = chain(values, repeat(UnknownValue()))
         if isinstance(assign_type, Tuple):
             assign_types = chain(assign_type.item_types, repeat(Unknown()))
@@ -226,13 +227,13 @@ def expression_type(node, context):
     if token == 'Lambda':
         return Function(Arguments(node.args, context), recur(node.body))
     if token == 'IfExp':
-        return unify_types(recur(node.body), recur(node.orelse))
+        return unify_types([recur(node.body), recur(node.orelse)])
     if token == 'Dict':
-        key_type = unique_type([recur(key) for key in node.keys])
-        value_type = unique_type([recur(value) for value in node.values])
+        key_type = unify_types([recur(key) for key in node.keys])
+        value_type = unify_types([recur(value) for value in node.values])
         return Dict(key_type, value_type)
     if token == 'Set':
-        return Set(unique_type([recur(elt) for elt in node.elts]))
+        return Set(unify_types([recur(elt) for elt in node.elts]))
     if token == 'ListComp':
         return List(comprehension_type(node.elt, node.generators, context))
     if token == 'SetComp':
@@ -275,7 +276,7 @@ def expression_type(node, context):
                     return Unknown()
                 if not isinstance(index, int):
                     return Unknown()
-                if not (0 <= index < len(value_type.item_types)):
+                if not 0 <= index < len(value_type.item_types):
                     return Unknown()
                 return value_type.item_types[index]
             elif isinstance(value_type, List):
@@ -289,7 +290,7 @@ def expression_type(node, context):
     if token == 'Name':
         return context.get_type(node.id, Unknown())
     if token == 'List':
-        return List(unique_type([recur(elt) for elt in node.elts]))
+        return List(unify_types([recur(elt) for elt in node.elts]))
     if token == 'Tuple':
         return Tuple([recur(element) for element in node.elts])
     raise Exception('expression_type does not recognize ' + token)
