@@ -297,4 +297,6 @@ def expression_type(node, context):
         return Tuple([recur(element) for element in node.elts])
     if token == 'NoneType':
         return NoneType()
+    if token == 'Unknown':
+        return Unknown()
     raise Exception('expression_type does not recognize ' + token)

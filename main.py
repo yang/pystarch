@@ -28,26 +28,23 @@ def builtin_context():
     return context
 
 
-def import_module(name, current_filepath): #, imported):
+def import_module(name, current_filepath, imported):
     source_dir = os.path.abspath(os.path.dirname(current_filepath))
     source, filepath, is_package = import_source(name, [source_dir])
     cache_filename = sha256(filepath + '~' + source).hexdigest()
     cache_filepath = os.path.join(os.sep, 'var', 'cache', NAME,
                                   __version__, cache_filename)
-    """
-    if filepath in imported:
-        i = imported.index(filepath)
-        paths = ' -> '.join(imported[i:] + [filepath])
-        print('CIRCULAR: ' + paths)
-        raise RuntimeError('Circular import detected: ' + paths)
-    else:
-        imported.append(filepath)
-    """
 
     if os.path.exists(cache_filepath):
         with open(cache_filepath, 'rb') as cache_file:
             return pickle.load(cache_file), filepath, is_package
+    elif filepath in imported:
+        i = imported.index(filepath)
+        paths = ' -> '.join(imported[i:] + [filepath])
+        #print('CIRCULAR: ' + paths)
+        return Instance('object', Scope()), filepath, is_package
     else:
+        imported.append(filepath)
         _, scope = analyze(source, filepath, imported=imported)
         module = Instance('object', scope)
         with open(cache_filepath, 'wb') as cache_file:
@@ -66,7 +63,7 @@ def import_chain(fully_qualified_name, asname, import_scope, current_filepath,
             raise RuntimeError('Cannot import ' + fully_qualified_name)
         if is_package:
             import_type, filepath, is_package = import_module(
-                name, filepath) #, imported)
+                name, filepath, imported)
             if asname is None:
                 scope.add_symbol(name, import_type)
             scope = import_type.attributes
