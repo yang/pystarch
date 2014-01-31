@@ -11,6 +11,7 @@ def get_module_source_path(import_name, paths=[]):
     python_paths = paths + sys.path[1:]  # sys.path includes PYTHONPATH env var
     try:
         module_file, module_path, _ = imp.find_module(import_name, python_paths)
+        print(import_name + ' => ' + module_path)
     except ImportError:
         raise RuntimeError('Could not find module for ' + import_name)
     if module_file:

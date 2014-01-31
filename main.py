@@ -28,17 +28,27 @@ def builtin_context():
     return context
 
 
-def import_module(name, current_filepath):
+def import_module(name, current_filepath): #, imported):
     source_dir = os.path.abspath(os.path.dirname(current_filepath))
     source, filepath, is_package = import_source(name, [source_dir])
     cache_filename = sha256(filepath + '~' + source).hexdigest()
     cache_filepath = os.path.join(os.sep, 'var', 'cache', NAME,
                                   __version__, cache_filename)
+    """
+    if filepath in imported:
+        i = imported.index(filepath)
+        paths = ' -> '.join(imported[i:] + [filepath])
+        print('CIRCULAR: ' + paths)
+        raise RuntimeError('Circular import detected: ' + paths)
+    else:
+        imported.append(filepath)
+    """
+
     if os.path.exists(cache_filepath):
         with open(cache_filepath, 'rb') as cache_file:
             return pickle.load(cache_file), filepath, is_package
     else:
-        _, scope = analyze(source, filepath)    # ignore warnings
+        _, scope = analyze(source, filepath, imported=imported)
         module = Instance('object', scope)
         with open(cache_filepath, 'wb') as cache_file:
             pickle.dump(module, cache_file, pickle.HIGHEST_PROTOCOL)
@@ -46,7 +56,8 @@ def import_module(name, current_filepath):
 
 
 # TODO: implement explicit relative imports like "import ..module"
-def import_chain(fully_qualified_name, asname, import_scope, current_filepath):
+def import_chain(fully_qualified_name, asname, import_scope, current_filepath,
+        imported):
     scope = import_scope
     filepath = current_filepath
     is_package = True
@@ -54,7 +65,8 @@ def import_chain(fully_qualified_name, asname, import_scope, current_filepath):
         if scope is None:
             raise RuntimeError('Cannot import ' + fully_qualified_name)
         if is_package:
-            import_type, filepath, is_package = import_module(name, filepath)
+            import_type, filepath, is_package = import_module(
+                name, filepath) #, imported)
             if asname is None:
                 scope.add_symbol(name, import_type)
             scope = import_type.attributes
@@ -100,11 +112,12 @@ class FunctionEvaluator(object):
 
 
 class Visitor(ast.NodeVisitor):
-    def __init__(self, filepath='', context=None):
+    def __init__(self, filepath='', context=None, imported=[]):
         ast.NodeVisitor.__init__(self)
         self._filepath = filepath
         self._warnings = []
         self._context = context if context is not None else builtin_context()
+        self._imported = imported
 
     def scope(self):
         return self._context.get_top_scope()
@@ -198,14 +211,16 @@ class Visitor(ast.NodeVisitor):
         scope = self._context.get_top_scope()
         for alias in node.names:
             try:
-                import_chain(alias.name, alias.asname, scope, self._filepath)
+                import_chain(alias.name, alias.asname, scope, self._filepath,
+                    self._imported)
             except RuntimeError as failure:
                 self.warn('import-failed', node,
                           alias.name + ': ' + str(failure))
 
     def visit_ImportFrom(self, node):
         try:
-            module = import_chain(node.module, None, Scope(), self._filepath)
+            module = import_chain(node.module, None, Scope(), self._filepath,
+                self._imported)
         except RuntimeError as failure:
             self.warn('import-failed', node, node.module + ': ' + str(failure))
             return
@@ -513,9 +528,9 @@ class Visitor(ast.NodeVisitor):
         self.end_scope()
 
 
-def analyze(source, filepath=None, context=None):
+def analyze(source, filepath=None, context=None, imported=[]):
     tree = ast.parse(source, filepath)
-    visitor = Visitor(filepath, context)
+    visitor = Visitor(filepath, context, imported)
     visitor.visit(tree)
     return visitor.warnings(), visitor.scope()
 

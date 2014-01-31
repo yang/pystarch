@@ -8,6 +8,7 @@ Support calling functions that are defined later (needed for mutual recursion)
 
 Imports
 =======
+Handle circular imports
 For some reason, importing email.mime.text is importing backend.type_objects
 
 Classes
