@@ -5,7 +5,7 @@ from functools import partial
 from itertools import chain, repeat
 from context import Scope
 from type_objects import Bool, Num, Str, List, Tuple, Set, \
-    Dict, Function, Instance, Unknown
+    Dict, Function, Instance, Unknown, NoneType
 from evaluate import static_evaluate, UnknownValue
 from util import unique_type, unify_types
 

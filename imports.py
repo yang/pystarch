@@ -7,18 +7,26 @@ def pyc_source(pyc_contents):
     return meta.dump_python_source(meta.decompile(code))
 
 
-def get_module_source_path(import_name, paths=[]):
-    python_paths = paths + sys.path[1:]  # sys.path includes PYTHONPATH env var
-    try:
-        module_file, module_path, _ = imp.find_module(import_name, python_paths)
-        #print(import_name + ' => ' + module_path)
-    except ImportError:
-        raise RuntimeError('Could not find module for ' + import_name)
-    if module_file:
-        module_file.close()
+def get_module_source_path(import_name, current_filepath):
+    if import_name is None:
+        module_file = None
+        module_path = current_filepath
+    else:
+        source_dir = os.path.abspath(os.path.dirname(current_filepath))
+        # sys.path includes PYTHONPATH env var
+        python_paths = [source_dir] + sys.path[1:]
+        try:
+            module_file, module_path, _ = imp.find_module(
+                import_name, python_paths)
+            #print(import_name + ' => ' + module_path)
+        except ImportError:
+            raise RuntimeError('Could not find module for ' + import_name)
+        if module_file:
+            module_file.close()
     if module_file is None and module_path == '':
         # module does not live in a file
-        raise RuntimeError('Could not find module source for ' + import_name)
+        raise RuntimeError('Could not find module source for '
+            + str(import_name))
     elif module_file is None:   # probably a package
         if os.path.isdir(module_path):
             for extension in ['py', 'pyc', 'pyo']:
@@ -26,14 +34,15 @@ def get_module_source_path(import_name, paths=[]):
                 if os.path.exists(filepath):
                     return filepath, True
             raise RuntimeError('Could not find __init__.py for '
-                               + import_name)
+                               + str(import_name))
         else:
             raise RuntimeError('Unrecognized module type')
     return module_path, False
 
 
-def import_source(import_name, paths=[]):
-    module_path, is_package = get_module_source_path(import_name, paths)
+def import_source(import_name, current_filepath):
+    module_path, is_package = get_module_source_path(
+        import_name, current_filepath)
     if module_path.endswith('.py'):
         with open(module_path) as module_file:
             return module_file.read(), module_path, is_package

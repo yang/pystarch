@@ -1,5 +1,5 @@
 import copy
-from type_objects import NoneType, Bool
+from type_objects import NoneType, Bool, Unknown
 from evaluate import UnknownValue
 
 # Tricky: need to support obj1.obj2.x where obj2 is an instance
@@ -63,7 +63,7 @@ class Scope(object):
     def copy_symbol(self, scope, name):
         self.add_symbol(name, scope.get_type(name), scope.get_value(name))
 
-    def get_type(self, name, default=None):
+    def get_type(self, name, default=Unknown()):
         return self._symbols[name][0] if name in self._symbols else default
 
     def get_value(self, name, default=UnknownValue()):

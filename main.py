@@ -29,8 +29,7 @@ def builtin_context():
 
 
 def import_module(name, current_filepath, imported):
-    source_dir = os.path.abspath(os.path.dirname(current_filepath))
-    source, filepath, is_package = import_source(name, [source_dir])
+    source, filepath, is_package = import_source(name, current_filepath)
     cache_filename = sha256(filepath + '~' + source).hexdigest()
     cache_filepath = os.path.join(os.sep, 'var', 'cache', NAME,
                                   __version__, cache_filename)
@@ -52,13 +51,13 @@ def import_module(name, current_filepath, imported):
         return module, filepath, is_package
 
 
-# TODO: implement explicit relative imports like "import ..module"
 def import_chain(fully_qualified_name, asname, import_scope, current_filepath,
         imported):
     scope = import_scope
     filepath = current_filepath
     is_package = True
-    for name in fully_qualified_name.split('.'):
+    names = fully_qualified_name.split('.') if fully_qualified_name else [None]
+    for name in names:
         if scope is None:
             raise RuntimeError('Cannot import ' + fully_qualified_name)
         if is_package:
@@ -73,6 +72,20 @@ def import_chain(fully_qualified_name, asname, import_scope, current_filepath,
     if asname is not None:
         import_scope.add_symbol(asname, import_type)
     return import_type
+
+
+def get_path_for_level(filepath, level):
+    for _ in range(level):
+        filepath = os.path.dirname(filepath)
+    if level > 0:
+        filepath = os.path.join(filepath, '__init__.py')
+    return filepath
+
+
+# only for "from x import y" syntax
+def import_from_chain(fully_qualified_name, level, current_filepath, imported):
+    return import_chain(fully_qualified_name, None, Scope(),
+        get_path_for_level(current_filepath, level), imported)
 
 
 class FunctionEvaluator(object):
@@ -216,10 +229,11 @@ class Visitor(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node):
         try:
-            module = import_chain(node.module, None, Scope(), self._filepath,
+            module = import_from_chain(node.module, node.level, self._filepath,
                 self._imported)
         except RuntimeError as failure:
-            self.warn('import-failed', node, node.module + ': ' + str(failure))
+            self.warn('import-failed', node, '{0}: {1}'.format(
+                node.module, failure))
             return
         if not isinstance(module, Instance):
             self.warn('invalid-import', node, node.module)

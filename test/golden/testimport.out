@@ -2,3 +2,4 @@ imported Dict(Unknown,Unknown) {}
 mime_text Instance(object)
 my_integer Num
 my_other_integer Num
+subprocess Instance(object)
