@@ -2,6 +2,7 @@
 High Priority
 =============
 Make an HTML debugging display just like pysonar
+- Need to evaluate function defs somehow
 EqualityMixin: other.__class__ == self.__class__
 Unwrap maybe in comprehensions with "if x is not None" conditions
 Use a code coverage tool to make sure everything is covered by tests

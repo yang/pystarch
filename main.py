@@ -216,9 +216,10 @@ class Visitor(ast.NodeVisitor):
         the_type = self._context.get_type(node.id)
         if the_type is None:
             self.warn('undefined', node)
-        annotation = (node.lineno, node.col_offset,
-                      len(node.id), str(the_type))
-        self._annotations.append(annotation)
+        if not isinstance(the_type, Unknown):
+            label = str(the_type) if the_type else None
+            annotation = (node.lineno, node.col_offset, len(node.id), label)
+            self._annotations.append(annotation)
 
     def visit_Module(self, node):
         self.begin_scope()

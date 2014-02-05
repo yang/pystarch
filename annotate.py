@@ -9,6 +9,8 @@ def add_annotation(line, offset, length, label):
     before = line[:offset]
     symbol = line[offset:(offset + length)]
     after = line[(offset + length):]
+    if label is None:
+        return before + '<font color="red">' + symbol + '</font>' + after
     return before + '<a href="{0}">{1}</a>'.format(label, symbol) + after
 
 
