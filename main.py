@@ -128,9 +128,13 @@ class Visitor(ast.NodeVisitor):
         self._warnings = []
         self._context = context if context is not None else builtin_context()
         self._imported = imported
+        self._annotations = []
 
     def scope(self):
         return self._context.get_top_scope()
+
+    def annotations(self):
+        return self._annotations
 
     def begin_scope(self):
         self._context.begin_scope()
@@ -209,8 +213,12 @@ class Visitor(ast.NodeVisitor):
                                         static_value)
 
     def visit_Name(self, node):
-        if self._context.get_type(node.id) is None:
+        the_type = self._context.get_type(node.id)
+        if the_type is None:
             self.warn('undefined', node)
+        annotation = (node.lineno, node.col_offset,
+                      len(node.id), str(the_type))
+        self._annotations.append(annotation)
 
     def visit_Module(self, node):
         self.begin_scope()
