@@ -1,6 +1,7 @@
 
 High Priority
 =============
+Negative slice indices, slice step size (for tuple type evaluation)
 Make an HTML debugging display just like pysonar
 - Need to evaluate function defs somehow
 EqualityMixin: other.__class__ == self.__class__

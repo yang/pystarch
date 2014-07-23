@@ -1,0 +1,14 @@
+in Visitor, keep a dict mapping source filepaths to scope items
+in visit_Import, pass this dict to import_chain so it can use this cache if the source path
+is in the dict
+import_chain should return the filepath so that the Visitor can maintain the dict
+
+problem: would need to create an object and put it in the dict *before* the module is finished being imported. this makes it very non-functional because we would have to pass in an object that gets mutated as opposed to creating an object and returning it.
+
+in import_module, pass in a prebuilt context to analyze (new builtin_context()) then we can load that object
+
+when python sees “import package”, it apparently doesn’t actually import everything. it must just keep a reference to something that might finish getting loaded later.
+
+based on my experiment, python seems to allow partially imported modules. for example, if you make a circular import, symbols defined before the circular import will be available, but those defined after the circular import won’t be available.
+
+i think a nice easy strategy is to just detect circular imports, show a warning, and let the imported scope just be empty for now

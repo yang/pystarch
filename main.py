@@ -24,7 +24,7 @@ def builtin_context():
     this_dir = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(this_dir, filename)) as builtins_file:
         source = builtins_file.read()
-    _, _ = analyze(source, filename, context)
+    analyze(source, filename, context)
     return context
 
 
@@ -44,7 +44,7 @@ def import_module(name, current_filepath, imported):
         return Instance('object', Scope()), filepath, is_package
     else:
         imported.append(filepath)
-        _, scope = analyze(source, filepath, imported=imported)
+        scope, _, _ = analyze(source, filepath, imported=imported)
         module = Instance('object', scope)
         with open(cache_filepath, 'wb') as cache_file:
             pickle.dump(module, cache_file, pickle.HIGHEST_PROTOCOL)
@@ -96,15 +96,9 @@ class FunctionEvaluator(object):
         self.cache = []
         self.recursion_block = False
 
-    def __call__(self, argument_scope, clear_warnings=False):
+    def evaluate(self, argument_scope, clear_warnings=False):
         if self.recursion_block:
-            return (Unknown(), [])
-        for i, item in enumerate(self.cache):
-            scope, result = item
-            if scope == argument_scope:
-                if clear_warnings:
-                    self.cache[i] = (scope, (result[0], []))
-                return result
+            return Unknown(), [], []
         self.context.begin_scope()
         self.context.merge_scope(argument_scope)
         self.recursion_block = True
@@ -112,11 +106,23 @@ class FunctionEvaluator(object):
         for stmt in self.body_node:
             visitor.visit(stmt)
         self.recursion_block = False
-        warnings = visitor.warnings()
+        _, warnings, annotations = visitor.report()
         scope = self.context.end_scope()
         return_type = scope.get_return_type() or NoneType()
-        result = (return_type, warnings)
-        cache_result = (return_type, []) if clear_warnings else result
+        return return_type, warnings, annotations
+
+    def __call__(self, argument_scope, clear_warnings=False):
+        for i, item in enumerate(self.cache):
+            cache_argument_scope, result = item
+            if cache_argument_scope == argument_scope:
+                if clear_warnings:
+                    return_type, _, _ = result
+                    cache_result = return_type, [], annotations
+                    self.cache[i] = (cache_argument_scope, cache_result)
+                return result
+        result = self.evaluate(argument_scope, clear_warnings)
+        cache_result = ((return_type, [], annotations)
+                         if clear_warnings else result)
         self.cache.append((argument_scope, cache_result))
         return result
 
@@ -133,17 +139,20 @@ class Visitor(ast.NodeVisitor):
     def scope(self):
         return self._context.get_top_scope()
 
+    def warnings(self):
+        return self._warnings
+
     def annotations(self):
         return self._annotations
+
+    def report(self):
+        return self.scope(), self.warnings(), self.annotations()
 
     def begin_scope(self):
         self._context.begin_scope()
 
     def end_scope(self):
         return self._context.end_scope()
-
-    def warnings(self):
-        return self._warnings
 
     def warn(self, category, node, details=None):
         warning = NodeWarning(self._filepath, category, node, details)
@@ -218,7 +227,8 @@ class Visitor(ast.NodeVisitor):
             self.warn('undefined', node)
         if not isinstance(the_type, Unknown):
             label = str(the_type) if the_type else None
-            annotation = (node.lineno, node.col_offset, len(node.id), label)
+            annotation = (self._filepath, node.lineno, node.col_offset,
+                          node.id, label)
             self._annotations.append(annotation)
 
     def visit_Module(self, node):
@@ -335,7 +345,9 @@ class Visitor(ast.NodeVisitor):
         if isinstance(func_type, Function): # skip class constructors
             argument_scope = make_argument_scope(node, func_type.arguments,
                 ExtendedContext(self._context))
-            _, warnings = func_type.return_type(argument_scope, True)
+            _, warnings, annotations = func_type.return_type(
+                argument_scope, True)
+            self._annotations.extend(annotations)
             self._warnings.extend(warnings)
 
         self.generic_visit(node)
@@ -552,11 +564,11 @@ def analyze(source, filepath=None, context=None, imported=[]):
     tree = ast.parse(source, filepath)
     visitor = Visitor(filepath, context, imported)
     visitor.visit(tree)
-    return visitor.warnings(), visitor.scope()
+    return visitor.report()
 
 
 def analysis(source, filepath=None):
-    warnings, scope = analyze(source, filepath)
+    scope, warnings, _ = analyze(source, filepath)
     warning_output = ''.join([str(warning) + '\n' for warning in warnings])
     scope_output = str(scope)
     separator = '\n' if warning_output and scope_output else ''

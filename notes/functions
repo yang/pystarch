@@ -22,8 +22,8 @@ the return type. This method lets us have the benefits of templating without
 the complexity.
 
 One caveat is that recursion is tricky when you are determining return types
-at call-time. The solution to this is to assume that the return type is "Any"
-when a recursive call is detected and then make the whole system let "Any"
-get overridden by any other type. This means that when the recursion base
-case is processed, the type of the base case will override "Any" and it
-will be the assumed return type of the function.
+at call-time. The solution to this is to assume that the return type is
+"Unknown" when a recursive call is detected and then make the whole system
+let "Unknown" get overridden by any other type. This means that when the
+recursion base case is processed, the type of the base case will override
+"Unknown" and it will be the assumed return type of the function.
