@@ -25,62 +25,72 @@ def builtin_scope():
     return scope
 
 
-def format_symbol(symbol):
-    if isinstance(symbol[1], UnknownValue):
-        return str(symbol[0])
-    else:
-        return str(symbol[0]) + ' ' + str(symbol[1])
+class Symbol(object):
+    def __init__(self, name, type_, value):
+        self.assign(name, type_, value)
+        self._constraint = AnyType()    # NOTE: won't work well if reassigned
+
+    def assign(self, name, type_, value):
+        self._name = name
+        self._type = type_
+        self._value = value if type_ != NoneType() else None
+
+    def get_name(self):
+        return self._name
+
+    def get_type(self):
+        return self._type
+
+    def get_value(self):
+        return self._value
+
+    def add_constraint(self, type_):
+        self._constraint = type_   # TODO: set to intersection
+
+    def __str__(self):
+        if isinstance(self._value, UnknownValue):
+            return str(self._type)
+        else:
+            return str(self._type) + ' ' + str(self._value)
 
 
 class Scope(object):
     def __init__(self):
         self._symbols = {}
-        self._return_type = None
-        self._return_value = None
+        self._return = None
+
+    def names(self):
+        return self._symbols.keys()
 
     def symbols(self):
         return copy.copy(self._symbols)
 
+    def get(self, name):
+        return self._symbols.get(name)
+
+    def add(self, symbol):
+        self._symbols[symbol.get_name()] = symbol
+
+    def remove(self, name):
+        del self._symbols[name]
+
+    def merge(self, scope):
+        self._symbols.update(scope.symbols())
+
+    def set_return(self, symbol):
+        self._return = symbol
+
+    def get_return(self):
+        return self._return
+
     def __str__(self):
-        fmt = lambda name, sym: '{0} {1}'.format(name, format_symbol(sym))
+        fmt = lambda name, sym: '{0} {1}'.format(name, sym)
         end = '\n' if len(self._symbols) > 0 else ''
         return '\n'.join([fmt(name, self._symbols[name])
             for name in sorted(self._symbols.keys())]) + end
 
     def __contains__(self, name):
         return name in self._symbols
-
-    def names(self):
-        return self._symbols.keys()
-
-    def add_symbol(self, name, typ, value=UnknownValue()):
-        val = None if typ == NoneType() else value
-        self._symbols[name] = (typ, val)
-
-    def remove_symbol(self, name):
-        del self._symbols[name]
-
-    def copy_symbol(self, scope, name):
-        self.add_symbol(name, scope.get_type(name), scope.get_value(name))
-
-    def get_type(self, name, default=Unknown()):
-        return self._symbols[name][0] if name in self._symbols else default
-
-    def get_value(self, name, default=UnknownValue()):
-        return self._symbols[name][1] if name in self._symbols else default
-
-    def set_return(self, return_type, return_value=UnknownValue()):
-        self._return_type = return_type
-        self._return_value = return_value
-
-    def get_return_type(self):
-        return self._return_type
-
-    def get_return_value(self):
-        return self._return_value
-
-    def merge(self, scope):
-        self._symbols.update(scope.symbols())
 
 
 class Context(object):
@@ -115,20 +125,25 @@ class Context(object):
     def apply_type_inferences(self, type_inferences):
         self._type_inferences.update(type_inferences)
 
-    def add_symbol(self, name, symbol_type, value=UnknownValue()):
-        self.get_top_scope().add_symbol(name, symbol_type, value)
+    def add(self, symbol):
+        self.get_top_scope().add(symbol)
 
-    def set_return(self, return_type, return_value=UnknownValue()):
-        self.get_top_scope().set_return(return_type, return_value)
+    def remove(self, name):
+        scope = self.find_scope(name)
+        if scope is not None:
+            scope.remove(name)
 
-    def get_return_type(self):
-        return self.get_top_scope().get_return_type()
+    def get(self, name):
+        if name in self._type_inferences:
+            return self._type_inferences.get(name)
+        scope = self.find_scope(name)
+        return scope.get(name) if scope is not None else None
 
-    def get_return_value(self):
-        return self.get_top_scope().get_return_value()
+    def set_return(self, symbol):
+        self.get_top_scope().set_return(symbol)
 
-    def copy_symbol(self, scope, name):
-        self.get_top_scope().copy_symbol(scope, name)
+    def get_return(self):
+        return self.get_top_scope().get_return()
 
     def merge_scope(self, scope):
         self.get_top_scope().merge(scope)
@@ -138,24 +153,6 @@ class Context(object):
             if name in scope:
                 return scope
         return None
-
-    def remove_symbol(self, name):
-        scope = self.find_scope(name)
-        if scope is not None:
-            scope.remove_symbol(name)
-
-    def get_type(self, name, default=None):
-        if name in self._type_inferences:
-            return self._type_inferences[name]
-        scope = self.find_scope(name)
-        return scope.get_type(name, default) if scope is not None else default
-
-    def get_value(self, name, default=UnknownValue()):
-        if name in self._type_inferences:
-            if isinstance(self._type_inferences[name], NoneType):
-                return None
-        scope = self.find_scope(name)
-        return scope.get_value(name, default) if scope is not None else default
 
 
 class ExtendedContext(Context):
@@ -172,19 +169,12 @@ class ExtendedContext(Context):
     def copy(self):
         raise RuntimeError('copy is not allowed on ' + self.__class__.__name__)
 
-    def get_type(self, name, default=None):
-        extended_type = super(ExtendedContext, self).get_type(name)
-        if extended_type is not None:
-            return extended_type
+    def get(self, name):
+        extended = super(ExtendedContext, self).get(name)
+        if extended is not None:
+            return extended
         else:
-            return self._base_context.get_type(name, default)
-
-    def get_value(self, name, default=UnknownValue()):
-        extended_value = super(ExtendedContext, self).get_value(name, default)
-        if extended_value != default:
-            return extended_value
-        else:
-            return self._base_context.get_value(name, default)
+            return self._base_context.get(name)
 
     def __str__(self):
         extended = super(ExtendedContext, self).__str__()

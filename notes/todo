@@ -4,6 +4,16 @@ so each function has a list for it's type and lists for each argument.
 
 We probably have to use union types for more power.
 
+When evaluating a function, we should be able to add constraints to any
+variable and detect if the contraints are violated. For example:
+
+def f(a, b):
+    return a + b
+
+We should be able to tag 'a' and 'b' as being either number or string since
+these are the only types that can work here. "Usage constraints" can be
+calculated before ever calling the function.
+
 
 High Priority
 =============
