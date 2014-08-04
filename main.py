@@ -121,7 +121,7 @@ class FunctionEvaluator(object):
                     self.cache[i] = (cache_argument_scope, cache_result)
                 return result
         result = self.evaluate(argument_scope, clear_warnings)
-        cache_result = ((return_type, [], annotations)
+        cache_result = ((result[0], [], result[2])
                          if clear_warnings else result)
         self.cache.append((argument_scope, cache_result))
         return result

@@ -256,7 +256,7 @@ def expression_type(node, context):
             return Unknown()
         arguments = function_type.arguments
         argument_scope = make_argument_scope(node, arguments, context)
-        return_type, _ = function_type.return_type(argument_scope)
+        return_type, _, _ = function_type.return_type(argument_scope)
         return return_type
     if token == 'Repr':    # TODO: is Repr a Str?
         return Str()

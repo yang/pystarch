@@ -1,4 +1,10 @@
 
+Store computed type of every function call, and every function argument,
+so each function has a list for it's type and lists for each argument.
+
+We probably have to use union types for more power.
+
+
 High Priority
 =============
 Negative slice indices, slice step size (for tuple type evaluation)
