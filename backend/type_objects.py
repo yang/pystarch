@@ -123,3 +123,15 @@ class Maybe(EqualityMixin):
 
     def __str__(self):
         return '{0}({1})'.format(self.__class__.__name__, self.subtype)
+
+
+class Union(EqualityMixin):
+    def __init__(self, *subtypes):
+        assert len(subtypes) > 0
+        self.subtypes = subtypes
+
+    def example(self):
+        return self.subtypes[0].example()
+
+    def __str__(self):
+        return 'Union({0})'.format(','.join([str(x) for x in self.subtypes]))

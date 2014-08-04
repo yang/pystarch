@@ -1,6 +1,5 @@
 import copy
-from type_objects import NoneType, Bool, Unknown
-from evaluate import UnknownValue
+from type_objects import NoneType, Bool
 
 # Tricky: need to support obj1.obj2.x where obj2 is an instance
 # of a class that may not be defined in the current scope
@@ -19,9 +18,9 @@ from evaluate import UnknownValue
 
 def builtin_scope():
     scope = Scope()
-    scope.add_symbol('None', NoneType(), None)
-    scope.add_symbol('True', Bool(), True)
-    scope.add_symbol('False', Bool(), False)
+    scope.add(Symbol('None', NoneType(), None))
+    scope.add(Symbol('True', Bool(), True))
+    scope.add(Symbol('False', Bool(), False))
     return scope
 
 
@@ -48,10 +47,7 @@ class Symbol(object):
         self._constraint = type_   # TODO: set to intersection
 
     def __str__(self):
-        if isinstance(self._value, UnknownValue):
-            return str(self._type)
-        else:
-            return str(self._type) + ' ' + str(self._value)
+        return '{0} {1}'.format(self._type, self._value)
 
 
 class Scope(object):
