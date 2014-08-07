@@ -98,7 +98,6 @@ class Scope(object):
 class Context(object):
     def __init__(self, layers=None):
         self._scope_layers = [builtin_scope()] if layers is None else layers
-        self._inferences = {}
 
     def __str__(self):
         return '\n'.join([str(layer) for layer in self._scope_layers])
@@ -116,17 +115,12 @@ class Context(object):
         self._scope_layers.append(Scope())
 
     def end_scope(self):
-        self._inferences = {}
         if len(self._scope_layers) <= 1:
             raise RuntimeError('Cannot close bottom scope layer')
         return self._scope_layers.pop()
 
     def get_top_scope(self):
         return self._scope_layers[-1]
-
-    def add_inference(self, symbol):
-        assert isinstance(symbol, Symbol)
-        self._inferences[symbol.get_name()] = symbol
 
     def add(self, symbol):
         assert isinstance(symbol, Symbol)
@@ -138,8 +132,6 @@ class Context(object):
             scope.remove(name)
 
     def get(self, name):
-        if name in self._inferences:
-            return self._inferences.get(name)
         scope = self.find_scope(name)
         return scope.get(name) if scope is not None else Symbol()
 
