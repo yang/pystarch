@@ -422,14 +422,16 @@ class Visitor(ast.NodeVisitor):
         if_inferences, else_inferences = maybe_inferences(node.test, ext_ctx)
 
         self.begin_scope()
-        self._context.apply_type_inferences(if_inferences)
+        for name, type_ in if_inferences.iteritems():
+            self._context.add_inference(Symbol(name, type_, UnknownValue()))
         for stmt in node.body:
             self.visit(stmt)
         if_scope = self.end_scope()
 
         if node.orelse:
             self.begin_scope()
-            self._context.apply_type_inferences(else_inferences)
+            for name, type_ in else_inferences.iteritems():
+                self._context.add_inference(Symbol(name, type_, UnknownValue()))
             for stmt in node.orelse:
                 self.visit(stmt)
             else_scope = self.end_scope()

@@ -1,5 +1,6 @@
 import copy
 from type_objects import NoneType, Bool
+from evaluate import UnknownValue
 
 # Tricky: need to support obj1.obj2.x where obj2 is an instance
 # of a class that may not be defined in the current scope
@@ -47,6 +48,8 @@ class Symbol(object):
         self._constraint = type_   # TODO: set to intersection
 
     def __str__(self):
+        if isinstance(self._value, UnknownValue):
+            return str(self._type)
         return '{0} {1}'.format(self._type, self._value)
 
 
@@ -95,7 +98,7 @@ class Scope(object):
 class Context(object):
     def __init__(self, layers=None):
         self._scope_layers = [builtin_scope()] if layers is None else layers
-        self._type_inferences = {}
+        self._inferences = {}
 
     def __str__(self):
         return '\n'.join([str(layer) for layer in self._scope_layers])
@@ -113,7 +116,7 @@ class Context(object):
         self._scope_layers.append(Scope())
 
     def end_scope(self):
-        self._type_inferences = {}
+        self._inferences = {}
         if len(self._scope_layers) <= 1:
             raise RuntimeError('Cannot close bottom scope layer')
         return self._scope_layers.pop()
@@ -121,9 +124,9 @@ class Context(object):
     def get_top_scope(self):
         return self._scope_layers[-1]
 
-    def apply_type_inferences(self, type_inferences):
-        #self._type_inferences.update(type_inferences)  # TODO: add this back in
-        pass
+    def add_inference(self, symbol):
+        assert isinstance(symbol, Symbol)
+        self._inferences[symbol.get_name()] = symbol
 
     def add(self, symbol):
         assert isinstance(symbol, Symbol)
@@ -135,8 +138,8 @@ class Context(object):
             scope.remove(name)
 
     def get(self, name):
-        if name in self._type_inferences:
-            return self._type_inferences.get(name)
+        if name in self._inferences:
+            return self._inferences.get(name)
         scope = self.find_scope(name)
         return scope.get(name) if scope is not None else Symbol()
 
