@@ -3,7 +3,7 @@ type validation. If there is a problem with the types, it should do some
 default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from itertools import chain, repeat
-from context import Scope
+from context import Scope, Symbol
 from type_objects import Bool, Num, Str, List, Tuple, Set, \
     Dict, Function, Instance, Unknown, NoneType
 from evaluate import static_evaluate, UnknownValue
@@ -31,7 +31,7 @@ def call_argtypes(call_node, context):
 def add_scope_symbol(scope, name, node, context):
     typ = expression_type(node, context)
     value = static_evaluate(node, context)
-    scope.add_symbol(name, typ, value)
+    scope.add(Symbol(name, typ, value))
 
 
 # context is the context at call-time, not definition-time
@@ -162,7 +162,7 @@ def get_assignments(target, value, context, generator=False):
 def assign(target, value, context, generator=False):
     assignments = get_assignments(target, value, context, generator)
     for name, assigned_type, static_value in assignments:
-        context.add_symbol(name, assigned_type, static_value)
+        context.add(Symbol(name, assigned_type, static_value))
 
 
 def assign_generators(generators, context):
@@ -268,7 +268,7 @@ def expression_type(node, context):
         value_type = recur(node.value)
         if not isinstance(value_type, Instance):
             return Unknown()
-        return value_type.attributes.get_type(node.attr, Unknown())
+        return value_type.attributes.get(node.attr).get_type(Unknown())
     if token == 'Subscript':
         value_type = recur(node.value)
         if get_token(node.slice) == 'Index':
@@ -290,7 +290,7 @@ def expression_type(node, context):
         else:
             return value_type
     if token == 'Name':
-        return context.get_type(node.id, Unknown())
+        return context.get(node.id).get_type(Unknown())
     if token == 'List':
         return List(unify_types([recur(elt) for elt in node.elts]))
     if token == 'Tuple':

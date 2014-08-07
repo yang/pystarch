@@ -25,9 +25,9 @@ def builtin_scope():
 
 
 class Symbol(object):
-    def __init__(self, name, type_, value):
+    def __init__(self, name=None, type_=None, value=None):
         self.assign(name, type_, value)
-        self._constraint = AnyType()    # NOTE: won't work well if reassigned
+        self._constraint = None    # NOTE: won't work well if reassigned
 
     def assign(self, name, type_, value):
         self._name = name
@@ -37,11 +37,11 @@ class Symbol(object):
     def get_name(self):
         return self._name
 
-    def get_type(self):
-        return self._type
+    def get_type(self, default=None):
+        return self._type if self._name else default
 
-    def get_value(self):
-        return self._value
+    def get_value(self, default=None):
+        return self._value if self._name else default
 
     def add_constraint(self, type_):
         self._constraint = type_   # TODO: set to intersection
@@ -53,7 +53,7 @@ class Symbol(object):
 class Scope(object):
     def __init__(self):
         self._symbols = {}
-        self._return = None
+        self._return = Symbol()
 
     def names(self):
         return self._symbols.keys()
@@ -62,18 +62,21 @@ class Scope(object):
         return copy.copy(self._symbols)
 
     def get(self, name):
-        return self._symbols.get(name)
+        return self._symbols.get(name, Symbol())
 
     def add(self, symbol):
+        assert isinstance(symbol, Symbol)
         self._symbols[symbol.get_name()] = symbol
 
     def remove(self, name):
         del self._symbols[name]
 
     def merge(self, scope):
+        assert isinstance(scope, Scope)
         self._symbols.update(scope.symbols())
 
     def set_return(self, symbol):
+        assert isinstance(symbol, Symbol)
         self._return = symbol
 
     def get_return(self):
@@ -119,9 +122,11 @@ class Context(object):
         return self._scope_layers[-1]
 
     def apply_type_inferences(self, type_inferences):
-        self._type_inferences.update(type_inferences)
+        #self._type_inferences.update(type_inferences)  # TODO: add this back in
+        pass
 
     def add(self, symbol):
+        assert isinstance(symbol, Symbol)
         self.get_top_scope().add(symbol)
 
     def remove(self, name):
@@ -133,7 +138,7 @@ class Context(object):
         if name in self._type_inferences:
             return self._type_inferences.get(name)
         scope = self.find_scope(name)
-        return scope.get(name) if scope is not None else None
+        return scope.get(name) if scope is not None else Symbol()
 
     def set_return(self, symbol):
         self.get_top_scope().set_return(symbol)
@@ -156,7 +161,7 @@ class ExtendedContext(Context):
         but which extends a base context that you cannot modify. """
     def __init__(self, base_context):
         self._base_context = base_context
-        super(ExtendedContext, self).__init__([{}])
+        super(ExtendedContext, self).__init__([Scope()])
 
     def __contains__(self, name):
         return (super(ExtendedContext, self).__contains__(name)

@@ -49,7 +49,7 @@ def static_evaluate(node, context):
     if token == 'Str':
         return node.s
     if token == 'Name':
-        return context.get_value(node.id, UnknownValue())
+        return context.get(node.id).get_value(UnknownValue())
     if token == 'BoolOp':
         operator = get_token(node.op)
         return operator_evaluate(operator, *map(recur, node.values))
@@ -87,5 +87,6 @@ def static_evaluate(node, context):
         value_type = expr.expression_type(node.value, context)
         if isinstance(value_type, Instance):
             # pylint: disable=maybe-no-member
-            return value_type.attributes.get_value(node.attr, UnknownValue())
+            return value_type.attributes.get(node.attr).get_value(
+                UnknownValue())
     return UnknownValue()
