@@ -167,7 +167,7 @@ class ExtendedContext(Context):
 
     def get(self, name):
         extended = super(ExtendedContext, self).get(name)
-        if extended is not None:
+        if extended.get_name():
             return extended
         else:
             return self._base_context.get(name)

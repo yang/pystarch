@@ -1,6 +1,7 @@
 import ast
 from evaluate import static_evaluate, UnknownValue
 from type_objects import NoneType, Maybe
+from context import Symbol
 
 
 class Visitor(ast.NodeVisitor):
@@ -26,7 +27,7 @@ def maybe_inferences(test, context):
     else_inferences = {}
     for name, maybe_type in maybes.items():
         context.begin_scope()
-        context.add_symbol(name, NoneType(), None)
+        context.add(Symbol(name, NoneType(), None))
         none_value = static_evaluate(test, context)
         context.end_scope()
         if none_value is False:
@@ -34,7 +35,7 @@ def maybe_inferences(test, context):
         if none_value is True:
             else_inferences[name] = maybe_type.subtype
         context.begin_scope()
-        context.add_symbol(name, maybe_type.subtype, UnknownValue())
+        context.add(Symbol(name, maybe_type.subtype, UnknownValue()))
         non_none_value = static_evaluate(test, context)
         context.end_scope()
         if non_none_value is False:
