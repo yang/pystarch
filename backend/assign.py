@@ -36,6 +36,8 @@ def assign(target, value, context, generator=False):
     if generator:
         if isinstance(value_type, (List, Set)):
             assign_type = value_type.item_type
+        elif isinstance(value_type, Tuple):
+            assign_type = value_type.item_types[0]  # TODO: warn here
         else:
             return []
     else:

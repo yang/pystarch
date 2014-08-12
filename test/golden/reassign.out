@@ -1,4 +1,4 @@
 c Num 3
 d Num 2
 
-testcases/reassign.py:3 reassignment "c = ..."
+testcases/reassign.py:3 reassignment "c = ..." (c)
