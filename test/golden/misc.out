@@ -6,7 +6,7 @@ c Num
 func Function()
 func2 Function()
 globe Num 1
-instance Unknown
+instance Instance(MyClass)
 my_function Function(sam: Function(x: Unknown), maxi: Function(obj: Unknown))
 types Function(, args: Tuple, kwargs: Dict)
 v List(Unknown)
@@ -23,7 +23,6 @@ testcases/misc.py:58 missing-argument "my_function" (maxi)
 testcases/misc.py:22 reassignment "bob = ..." (bob)
 testcases/misc.py:22 undefined "sam"
 testcases/misc.py:23 reassignment "globe = ..." (globe)
-testcases/misc.py:59 not-a-function "MyClass" (MyClass)
 testcases/misc.py:35 constant-if-condition "If"
 testcases/misc.py:37 reassignment "alice = ..." (alice)
 testcases/misc.py:37 type-change "alice = ..." (alice: Num -> Str)
@@ -53,4 +52,6 @@ testcases/misc.py:22 undefined "sam"
 testcases/misc.py:23 reassignment "globe = ..." (globe)
 testcases/misc.py:30 constant-if-condition "If"
 testcases/misc.py:68 reassignment "i = ..." (i)
-builtins.py:256 not-a-function "file" (file)
+builtins.py:256 too-many-arguments "file"
+builtins.py:256 type-error "file" (Argument 2 expected type Num but got Str)
+builtins.py:256 undefined "buffering"

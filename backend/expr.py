@@ -4,7 +4,7 @@ default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from context import Scope, Symbol
 from type_objects import Bool, Num, Str, List, Tuple, Set, \
-    Dict, Function, Instance, Unknown, NoneType
+    Dict, Function, Instance, Unknown, NoneType, Class
 from evaluate import static_evaluate, UnknownValue
 from util import unique_type, unify_types
 from assign import assign
@@ -212,6 +212,8 @@ def expression_type(node, context):
         return Bool()
     if token == 'Call':
         function_type = recur(node.func)
+        if isinstance(function_type, Class):
+            return function_type.return_type
         if not isinstance(function_type, Function):
             return Unknown()
         arguments = function_type.arguments

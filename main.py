@@ -299,7 +299,7 @@ class Visitor(ast.NodeVisitor):
             for stmt in node.body:
                 self.visit(stmt)
             scope = self.end_scope()
-            return_type = scope.get(self_name)
+            return_type = scope.get_type(self_name)
         else:
             return_type = FunctionEvaluator(self._filepath, node.body,
                 self._context.copy())
@@ -323,7 +323,7 @@ class Visitor(ast.NodeVisitor):
         func_type = self._context.get_type(node.func.id)
         if not func_type:
             return self.warn('undefined-function', node, node.func.id)
-        if not isinstance(func_type, Function):
+        if not isinstance(func_type, (Function, Class)):
             return self.warn('not-a-function', node, node.func.id)
 
         argtypes, kwargtypes = call_argtypes(node,
