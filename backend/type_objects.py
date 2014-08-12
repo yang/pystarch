@@ -15,14 +15,17 @@ class BasicMixin(object):
     def __str__(self):
         return self.__class__.__name__
 
+
 class ItemTypeMixin(object):
     def __str__(self):
         return '{0}({1})'.format(self.__class__.__name__, self.item_type)
+
 
 class TupleMixin(object):
     def __str__(self):
         return '{0}({1})'.format(self.__class__.__name__,
             ','.join([str(x) for x in self.item_types]))
+
 
 class CallableMixin(object):
     def __str__(self):
@@ -34,21 +37,26 @@ class Unknown(EqualityMixin, BasicMixin):
     def example(self):
         return object()
 
+
 class NoneType(EqualityMixin, BasicMixin):
     def example(self):
         return None
+
 
 class Bool(EqualityMixin, BasicMixin):
     def example(self):
         return True
 
+
 class Num(EqualityMixin, BasicMixin):
     def example(self):
         return 1
 
+
 class Str(EqualityMixin, BasicMixin):
     def example(self):
         return 'a'
+
 
 class List(EqualityMixin, ItemTypeMixin):
     def __init__(self, item_type):
@@ -57,6 +65,7 @@ class List(EqualityMixin, ItemTypeMixin):
     def example(self):
         return [self.item_type.example()]
 
+
 class Tuple(EqualityMixin, TupleMixin):
     def __init__(self, item_types):
         self.item_types = item_types
@@ -64,12 +73,14 @@ class Tuple(EqualityMixin, TupleMixin):
     def example(self):
         return tuple(x.example() for x in self.item_types)
 
+
 class Set(EqualityMixin, ItemTypeMixin):
     def __init__(self, item_type):
         self.item_type = item_type
 
     def example(self):
         return {self.item_type.example()}
+
 
 class Dict(EqualityMixin):
     def __init__(self, key_type, value_type):
@@ -83,6 +94,7 @@ class Dict(EqualityMixin):
         return '{0}({1},{2})'.format(self.__class__.__name__,
             self.key_type, self.value_type)
 
+
 class Function(EqualityMixin, CallableMixin):
     def __init__(self, arguments, return_type):
         self.arguments = arguments
@@ -90,6 +102,7 @@ class Function(EqualityMixin, CallableMixin):
 
     def example(self):
         return object()
+
 
 # set class_name to __import__ for imports
 class Instance(EqualityMixin):
@@ -103,16 +116,22 @@ class Instance(EqualityMixin):
     def __str__(self):
         return '{0}({1})'.format(self.__class__.__name__, self.class_name)
 
+
 # a Class is a Function that returns an Instance plus static methods/attrs
 class Class(EqualityMixin, CallableMixin):
-    def __init__(self, arguments, return_type, attributes):
+    def __init__(self, name, arguments, return_type, attributes):
+        self.name = name
         self.arguments = arguments
         self.return_type = return_type
-        # symbols only contains class methods and class attributes
+        # only contains class methods and class attributes
         self.attributes = attributes
 
     def example(self):
         return object()
+
+    def __str__(self):
+        return self.name
+
 
 class Maybe(EqualityMixin):
     def __init__(self, subtype):

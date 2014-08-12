@@ -1,4 +1,6 @@
 
+Next: handle assignment to instance attribute
+
 Store computed type of every function call, and every function argument,
 so each function has a list for it's type and lists for each argument.
 
@@ -32,6 +34,7 @@ Handle circular imports properly
 
 Classes
 =======
+Idea: set return value of __init__ to be the "self" instance (this is a hack)
 Handle attribute assignment
 Handle attribute assignment when it is one item of a tuple assignment
 Process self.x into object namespace

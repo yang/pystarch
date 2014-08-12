@@ -135,6 +135,7 @@ class Visitor(ast.NodeVisitor):
         self._context = context if context is not None else builtin_context()
         self._imported = imported
         self._annotations = []
+        self._class_name = None     # the name of the class we are inside
 
     def scope(self):
         return self._context.get_top_scope()
@@ -265,32 +266,49 @@ class Visitor(ast.NodeVisitor):
             self._context.add(Symbol(symbol_name, symbol_type, UnknownValue()))
 
     def visit_ClassDef(self, node):
+        self._class_name = node.name
         self.begin_scope()
         self.generic_visit(node)
         scope = self.end_scope()
+        self._class_name = None
         # TODO: handle case of no __init__ function
         if '__init__' in scope:
             init_arguments = scope.get_type('__init__').arguments
             arguments = Arguments.copy_without_first_argument(init_arguments)
+            instance_type = scope.get_type('__init__').return_type
         else:
             arguments = Arguments()
-        return_type = Instance(node.name, scope)
+            instance_type = Instance(node.name, Scope())
         # TODO: separate class/static methods and attributes from the rest
-        class_type = Class(arguments, return_type, Scope())
+        class_type = Class(node.name, arguments, instance_type, Scope())
         # TODO: save self.x into scope where "self" is 1st param to init
         self._context.add(Symbol(node.name, class_type, UnknownValue()))
 
     def visit_FunctionDef(self, node):
-        arguments = Arguments(node.args, ExtendedContext(self._context),
+        # TODO: make sure at least one arg when inside class
+        all_arguments = Arguments(node.args, ExtendedContext(self._context),
             node.decorator_list)
+        arguments = (Arguments.copy_without_first_argument(all_arguments)
+                     if self._class_name else all_arguments)
         specified_types = zip(arguments.names,
             arguments.explicit_types, arguments.default_types)
         for name, explicit_type, default_type in specified_types:
             if (explicit_type != Unknown() and default_type != Unknown() and
                     default_type != explicit_type):
                 self.warn('default-argument-type-error', node, name)
-        return_type = FunctionEvaluator(self._filepath, node.body,
-            self._context.copy())
+        if self._class_name and node.name == '__init__':
+            self.begin_scope()
+            self_name = all_arguments.names[0]
+            # TODO: have to add argument types to scope (at least default args)
+            self._context.add(Symbol(self_name,
+                              Instance(self._class_name, Scope())))
+            for stmt in node.body:
+                self.visit(stmt)
+            scope = self.end_scope()
+            return_type = scope.get(self_name)
+        else:
+            return_type = FunctionEvaluator(self._filepath, node.body,
+                self._context.copy())
         function_type = Function(arguments, return_type)
         self._context.add(Symbol(node.name, function_type, UnknownValue()))
 
