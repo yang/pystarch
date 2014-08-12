@@ -2,12 +2,12 @@
 type validation. If there is a problem with the types, it should do some
 default behavior or raise an exception if there is no default behavior."""
 from functools import partial
-from itertools import chain, repeat
 from context import Scope, Symbol
 from type_objects import Bool, Num, Str, List, Tuple, Set, \
     Dict, Function, Instance, Unknown, NoneType
 from evaluate import static_evaluate, UnknownValue
 from util import unique_type, unify_types
+from assign import assign
 
 
 def get_token(node):
@@ -123,46 +123,6 @@ class Arguments(object):
             if self.kwarg_name else '')
         return (', '.join(name + ': ' + str(argtype) for name, argtype
             in zip(self.names, self.types)) + vararg + kwarg)
-
-
-def get_assignments(target, value, context, generator=False):
-    value_type = expression_type(value, context)
-    static_value = static_evaluate(value, context)
-    if generator:
-        if isinstance(value_type, (List, Set)):
-            assign_type = value_type.item_type
-        else:
-            assign_type = Unknown()
-    else:
-        assign_type = value_type
-
-    target_token = get_token(target)
-    if target_token in ('Tuple', 'List'):
-        names = [element.id for element in target.elts]
-        values = static_value if isinstance(static_value,
-                                            (Tuple, List)) else []
-        assign_values = chain(values, repeat(UnknownValue()))
-        if isinstance(assign_type, Tuple):
-            assign_types = chain(assign_type.item_types, repeat(Unknown()))
-        elif isinstance(assign_type, List):
-            assign_types = repeat(assign_type.item_type)
-        else:
-            assign_types = repeat(Unknown())
-        assignments = zip(names, assign_types, assign_values)
-    elif target_token == 'Name':
-        assignments = [(target.id, assign_type, static_value)]
-    elif target_token == 'Subscript':
-        assignments = []        # TODO: implement this
-    else:
-        raise RuntimeError('Unrecognized assignment target ' + target_token)
-    return assignments
-
-
-# adds assigned symbols to the current namespace, does not do validation
-def assign(target, value, context, generator=False):
-    assignments = get_assignments(target, value, context, generator)
-    for name, assigned_type, static_value in assignments:
-        context.add(Symbol(name, assigned_type, static_value))
 
 
 def assign_generators(generators, context):

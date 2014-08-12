@@ -11,13 +11,13 @@ def main():
     for filename in python_filenames:
         name, _ = os.path.splitext(filename)
         filepath = os.path.join('testcases', filename)
-        with open(filepath) as source_file:
-            source = source_file.read()
-        output = analysis(source, filepath)
         golden_path = os.path.join('golden', name + '.out')
         if not os.path.exists(golden_path):
             print(name + ': MISSING GOLDEN FILE')
             continue
+        with open(filepath) as source_file:
+            source = source_file.read()
+        output = analysis(source, filepath)
         with open(golden_path) as golden_file:
             golden_output = golden_file.read()
         if output == golden_output:

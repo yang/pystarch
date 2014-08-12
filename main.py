@@ -7,7 +7,7 @@ from hashlib import sha256
 from imports import import_source
 from warning import NodeWarning
 from backend import expression_type, call_argtypes, Arguments, \
-    get_assignments, make_argument_scope, get_token, assign_generators, \
+    assign, make_argument_scope, get_token, assign_generators, \
     unify_types, known_types, Context, ExtendedContext, Scope, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
@@ -207,21 +207,15 @@ class Visitor(ast.NodeVisitor):
         else:
             self._context.set_return(Symbol('return', new_type, static_value))
 
-    def check_assign_name_type(self, node, name, new_type, static_value):
-        previous_type = self._context.get_type(name)
-        if previous_type is not None:
-            if previous_type != new_type:
-                details = '{0} -> {1}'.format(previous_type, new_type)
-                self.warn('type-change', node, details)
-            self.warn('reassignment', node)
-        self._context.add(Symbol(name, new_type, static_value))
-
     def check_assign(self, node, target, value, generator=False):
-        assignments = get_assignments(target, value,
-            ExtendedContext(self._context), generator=generator)
-        for name, assigned_type, static_value in assignments:
-            self.check_assign_name_type(node, name, assigned_type,
-                                        static_value)
+        assignments = assign(target, value, self._context, generator=generator)
+        for name, old_symbol, new_symbol in assignments:
+            if old_symbol is not None:
+                self.warn('reassignment', node, name)
+                if new_symbol.get_type() != old_symbol.get_type():
+                    details = '{0}: {1} -> {2}'.format(
+                        name, old_symbol.get_type(), new_symbol.get_type())
+                    self.warn('type-change', node, details)
 
     def visit_Name(self, node):
         the_type = self._context.get_type(node.id)
