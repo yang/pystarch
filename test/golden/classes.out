@@ -1,4 +1,5 @@
 Test Test
 a Num 1
 b Str 2
+c Num
 t Instance(Test)

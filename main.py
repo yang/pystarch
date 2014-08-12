@@ -270,6 +270,10 @@ class Visitor(ast.NodeVisitor):
             init_arguments = scope.get_type('__init__').arguments
             arguments = Arguments.copy_without_first_argument(init_arguments)
             instance_type = scope.get_type('__init__').return_type
+            common = set(scope.names()) & set(instance_type.attributes.names())
+            if len(common) > 0:
+                self.warn(node, 'overlapping-class-names', ','.join(common))
+            instance_type.attributes.merge(scope)
         else:
             arguments = Arguments()
             instance_type = Instance(node.name, Scope())
