@@ -20,7 +20,7 @@ def get_names(node):
 
 
 def maybe_inferences(test, context):
-    types = {name: context.get(name).get_type() for name in get_names(test)}
+    types = {name: context.get_type(name) for name in get_names(test)}
     maybes = {k: v for k, v in types.items() if isinstance(v, Maybe)}
 
     if_inferences = {}

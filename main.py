@@ -67,7 +67,7 @@ def import_chain(fully_qualified_name, asname, import_scope, current_filepath,
                 scope.add(Symbol(name, import_type, UnknownValue()))
             scope = import_type.attributes
         else:
-            import_type = scope.get(name).get_type()
+            import_type = scope.get_type(name)
             scope = None
     if asname is not None:
         import_scope.add(Symbol(asname, import_type, UnknownValue()))
@@ -108,7 +108,7 @@ class FunctionEvaluator(object):
         self.recursion_block = False
         _, warnings, annotations = visitor.report()
         scope = self.context.end_scope()
-        return_type = scope.get_return().get_type(NoneType())
+        return_type = scope.get_type() or NoneType()
         return return_type, warnings, annotations
 
     def __call__(self, argument_scope, clear_warnings=False):
@@ -194,7 +194,7 @@ class Visitor(ast.NodeVisitor):
         value_type = self.expr_type(node.value)
         return_type = List(value_type) if is_yield else value_type
         static_value = self.evaluate(node.value)
-        previous_type = self._context.get_return().get_type()
+        previous_type = self._context.get_type()
         if previous_type is None:
             self._context.set_return(Symbol(
                 'return', return_type, static_value))
@@ -207,7 +207,7 @@ class Visitor(ast.NodeVisitor):
             self._context.set_return(Symbol('return', new_type, static_value))
 
     def check_assign_name_type(self, node, name, new_type, static_value):
-        previous_type = self._context.get(name).get_type()
+        previous_type = self._context.get_type(name)
         if previous_type is not None:
             if previous_type != new_type:
                 details = '{0} -> {1}'.format(previous_type, new_type)
@@ -223,7 +223,7 @@ class Visitor(ast.NodeVisitor):
                                         static_value)
 
     def visit_Name(self, node):
-        the_type = self._context.get(node.id).get_type()
+        the_type = self._context.get_type(node.id)
         if the_type is None:
             self.warn('undefined', node)
         if not isinstance(the_type, Unknown):
@@ -261,7 +261,7 @@ class Visitor(ast.NodeVisitor):
 
         for alias in node.names:
             symbol_name = alias.asname or alias.name
-            symbol_type = module.attributes.get(alias.name).get_type()
+            symbol_type = module.attributes.get_type(alias.name) or Unknown()
             self._context.add(Symbol(symbol_name, symbol_type, UnknownValue()))
 
     def visit_ClassDef(self, node):
@@ -270,7 +270,7 @@ class Visitor(ast.NodeVisitor):
         scope = self.end_scope()
         # TODO: handle case of no __init__ function
         if '__init__' in scope:
-            init_arguments = scope.get('__init__').get_type().arguments
+            init_arguments = scope.get_type('__init__').arguments
             arguments = Arguments.copy_without_first_argument(init_arguments)
         else:
             arguments = Arguments()
@@ -308,7 +308,7 @@ class Visitor(ast.NodeVisitor):
     def visit_Call(self, node):
         if not hasattr(node.func, 'id'):
             return      # TODO: support class attributes
-        func_type = self._context.get(node.func.id).get_type()
+        func_type = self._context.get_type(node.func.id)
         if not func_type:
             return self.warn('undefined-function', node, node.func.id)
         if not isinstance(func_type, Function):
@@ -443,18 +443,17 @@ class Visitor(ast.NodeVisitor):
             if diff not in self._context:
                 self.warn('conditionally-assigned', node, diff)
 
-        common = set(if_scope.names()) | set(else_scope.names())
+        common = set(if_scope.names()) & set(else_scope.names())
         for name in common:
-            types = [if_scope.get(name).get_type(),
-                     else_scope.get(name).get_type()]
+            types = [if_scope.get_type(name), else_scope.get_type(name)]
             unified_type = unify_types(types)
             self._context.add(Symbol(name, unified_type, UnknownValue()))
             if isinstance(unified_type, Unknown):
                 if not any(isinstance(x, Unknown) for x in types):
                     self.warn('conditional-type', node, name)
 
-        return_types = [if_scope.get_return().get_type(Unknown()),
-                        else_scope.get_return().get_type(Unknown())]
+        return_types = [if_scope.get_type() or Unknown(),
+                        else_scope.get_type() or Unknown()]
         unified_return_type = unify_types(return_types)
         self._context.set_return(Symbol('return', unified_return_type,
             UnknownValue()))

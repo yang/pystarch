@@ -268,7 +268,7 @@ def expression_type(node, context):
         value_type = recur(node.value)
         if not isinstance(value_type, Instance):
             return Unknown()
-        return value_type.attributes.get(node.attr).get_type(Unknown())
+        return value_type.attributes.get_type(node.attr) or Unknown()
     if token == 'Subscript':
         value_type = recur(node.value)
         if get_token(node.slice) == 'Index':
@@ -290,7 +290,7 @@ def expression_type(node, context):
         else:
             return value_type
     if token == 'Name':
-        return context.get(node.id).get_type(Unknown())
+        return context.get_type(node.id) or Unknown()
     if token == 'List':
         return List(unify_types([recur(elt) for elt in node.elts]))
     if token == 'Tuple':

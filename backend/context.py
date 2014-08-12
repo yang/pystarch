@@ -26,7 +26,9 @@ def builtin_scope():
 
 
 class Symbol(object):
-    def __init__(self, name=None, type_=None, value=None):
+    def __init__(self, name, type_=None, value=None):
+        assert name is not None
+        assert type_ is not None
         self.assign(name, type_, value)
         self._constraint = None    # NOTE: won't work well if reassigned
 
@@ -38,11 +40,11 @@ class Symbol(object):
     def get_name(self):
         return self._name
 
-    def get_type(self, default=None):
-        return self._type if self._name else default
+    def get_type(self):
+        return self._type
 
-    def get_value(self, default=None):
-        return self._value if self._name else default
+    def get_value(self):
+        return self._value
 
     def add_constraint(self, type_):
         self._constraint = type_   # TODO: set to intersection
@@ -56,7 +58,7 @@ class Symbol(object):
 class Scope(object):
     def __init__(self):
         self._symbols = {}
-        self._return = Symbol()
+        self._return = None
 
     def names(self):
         return self._symbols.keys()
@@ -65,7 +67,11 @@ class Scope(object):
         return copy.copy(self._symbols)
 
     def get(self, name):
-        return self._symbols.get(name, Symbol())
+        return self._symbols.get(name)
+
+    def get_type(self, name=None):
+        symbol = self.get(name) if name else self.get_return()
+        return symbol.get_type() if symbol else None
 
     def add(self, symbol):
         assert isinstance(symbol, Symbol)
@@ -133,7 +139,11 @@ class Context(object):
 
     def get(self, name):
         scope = self.find_scope(name)
-        return scope.get(name) if scope is not None else Symbol()
+        return scope.get(name) if scope is not None else None
+
+    def get_type(self, name=None):
+        symbol = self.get(name) if name else self.get_return()
+        return symbol.get_type() if symbol else None
 
     def set_return(self, symbol):
         self.get_top_scope().set_return(symbol)
@@ -167,7 +177,7 @@ class ExtendedContext(Context):
 
     def get(self, name):
         extended = super(ExtendedContext, self).get(name)
-        if extended.get_name():
+        if extended is not None:
             return extended
         else:
             return self._base_context.get(name)

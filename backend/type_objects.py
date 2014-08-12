@@ -116,6 +116,7 @@ class Class(EqualityMixin, CallableMixin):
 
 class Maybe(EqualityMixin):
     def __init__(self, subtype):
+        assert subtype is not None
         self.subtype = subtype
 
     def example(self):
