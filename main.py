@@ -411,6 +411,21 @@ class Visitor(ast.NodeVisitor):
         self.warn('delete', node)
         self.generic_visit(node)
 
+    def _visit_branch(self, body, inferences):
+        # Note: need two scope layers, first for inferences and
+        # second for symbols that are assigned within the branch
+        if body is None:
+            return Scope()
+        self.begin_scope()  # inferences scope
+        for name, type_ in inferences.iteritems():
+            self._context.add(Symbol(name, type_, UnknownValue()))
+        self.begin_scope()
+        for stmt in body:
+            self.visit(stmt)
+        scope = self.end_scope()
+        self.end_scope()        # inferences scope
+        return scope
+
     def visit_If(self, node):
         self.visit(node.test)
         self.check_type(node.test, Bool)
@@ -420,23 +435,8 @@ class Visitor(ast.NodeVisitor):
 
         ext_ctx = ExtendedContext(self._context)
         if_inferences, else_inferences = maybe_inferences(node.test, ext_ctx)
-
-        self.begin_scope()
-        for name, type_ in if_inferences.iteritems():
-            self._context.add(Symbol(name, type_, UnknownValue()))
-        for stmt in node.body:
-            self.visit(stmt)
-        if_scope = self.end_scope()
-
-        if node.orelse:
-            self.begin_scope()
-            for name, type_ in else_inferences.iteritems():
-                self._context.add(Symbol(name, type_, UnknownValue()))
-            for stmt in node.orelse:
-                self.visit(stmt)
-            else_scope = self.end_scope()
-        else:
-            else_scope = Scope()
+        if_scope = self._visit_branch(node.body, if_inferences)
+        else_scope = self._visit_branch(node.orelse, else_inferences)
 
         diffs = set(if_scope.names()) ^ set(else_scope.names())
         for diff in diffs:
