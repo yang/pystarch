@@ -20,3 +20,23 @@ use this technique rather than the inline warnings that we currently use.
 
 Then at the end of a FunctionDef, we scan the scope for the symbols of the
 function arguments and save the inferred types as the function arguments.
+
+
+The required type has to be passed down the tree. For example:
+
+len(2 * x)
+
+If you only saw "2 * x", you wouldn't know if x is a number or a string, but
+because it is the parameter to the "len" function, you know the result must
+be a string, list, set, or tuple, so we should be able to cross number off the
+list of possibilities. And this expression may be buried inside another
+expression, so it is not a simple matter to keep track of what the type of
+each part should be.
+
+NOTE: in the grammar, function arguments ONLY appear in expressions.
+Though we do need to pass in information from other grammatical structures
+about what the expected type of the expression is. For example, the expression
+for the conditional of an "if" statement should be a boolean.
+
+So we need a module that takes an expression, a context, and a required result
+type. It then returns the inferred types of all the names in the expression.
