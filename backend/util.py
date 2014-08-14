@@ -85,3 +85,25 @@ def type_set_match(types, classes):
     unknowns = [x for x in types if isinstance(x, Unknown)]
     return type_subset(known, classes) and len(unknowns) >= len(unmatched)
 
+
+def type_intersection(a, b):
+    if a == b:
+        return a
+    elif isinstance(a, Unknown):
+        return b
+    elif isinstance(b, Unknown):
+        return a
+    elif isinstance(a, Union) and isinstance(b, Union):
+        common = list(set(a.subtypes) & set(b.subtypes))
+        if len(common) == 0:
+            return None
+        elif len(common) == 1:
+            return common[0]
+        else:
+            return Union(common)
+    elif isinstance(a, Union):
+        return b if b in a.subtypes else None
+    elif isinstance(b, Union):
+        return a if a in b.subtypes else None
+    else:
+        return None

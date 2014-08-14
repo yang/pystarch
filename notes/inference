@@ -1,0 +1,22 @@
+Inference has to be merged into the main tree walking because
+we will need to keep track of the types of local variables in order to
+do the inference:
+
+def f(x):
+    a = 'string'
+    return a + x
+
+Here, we need to know that 'a' is a string in order to infer that x is
+also a string.
+
+Idea: The simple "type" of a symbol is the most specific type we can determine
+at the time of the symbol's creation. But we also store an "inferred_type" that
+is progressively restricted as the symbol is used in expressions. The
+inferred_type starts out as Unknown, and we take the intersection each time
+it is used. If the intersection is null, then we can generate a warning.
+
+Basically we just have to change all our type checking logic in main.py to
+use this technique rather than the inline warnings that we currently use.
+
+Then at the end of a FunctionDef, we scan the scope for the symbols of the
+function arguments and save the inferred types as the function arguments.

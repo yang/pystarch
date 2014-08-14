@@ -1,5 +1,6 @@
 
-Next: handle assignment to instance attribute
+NEXT: infer type of function arguments based on usage
+
 
 Store computed type of every function call, and every function argument,
 so each function has a list for it's type and lists for each argument.
@@ -19,6 +20,7 @@ calculated before ever calling the function.
 
 High Priority
 =============
+Call class methods properly (set 'self' parameter to instance)
 Negative slice indices, slice step size (for tuple type evaluation)
 Make an HTML debugging display just like pysonar
 - Need to evaluate function defs somehow
@@ -26,32 +28,12 @@ EqualityMixin: other.__class__ == self.__class__
 Unwrap maybe in comprehensions with "if x is not None" conditions
 Use a code coverage tool to make sure everything is covered by tests
 Support calling functions that are defined later (needed for mutual recursion)
+Check that __init__ takes at least one argument
 
 Imports
 =======
 from a.b import module
 Handle circular imports properly
-
-Classes
-=======
-Idea: set return value of __init__ to be the "self" instance (this is a hack)
-Handle attribute assignment
-Handle attribute assignment when it is one item of a tuple assignment
-Process self.x into object namespace
-- When you reach a FunctionDef for __init__
-    set first param to type "Object[<Class>]"
-    need some way to know which Class we are in
-- When you reach an assignment for an attribute
-    if you are in an __init__ body and the left side is the first arg
-    then allow subnamespace assignment without warnings
-- After processing FunctionDef for __init__
-    look for the symbol for "self" (whatever the first parameter is)
-    and copy its subnamespace to the current namespace (along with __init__)
-- In the ClassDef, after processing the class namespace,
-    add two types: "Object[<Class>]" with subnamespace equal to
-    the namespace from the ClassDef and a function "<Class>" with
-    return type "Object[<Class>]" and arguments from the __init__ function
-Check that __init__ takes at least one argument
 
 Medium Priority
 ===============
