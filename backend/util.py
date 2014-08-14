@@ -1,4 +1,5 @@
-from type_objects import NoneType, Maybe, Unknown
+from type_objects import NoneType, Maybe, Unknown, Union, List, Set, \
+    Dict, Tuple, BaseTuple
 from itertools import tee, izip
 
 
@@ -74,16 +75,38 @@ def comparable_types(types):
         return all(_comparable_types(a, b) for a, b in pairwise(known))
 
 
-def type_subset(types, classes):
-    return all(any(isinstance(t, c) for c in classes) for t in types)
+def type_subset(a, b):
+    if isinstance(b, Unknown):
+        return True
+    if isinstance(a, Unknown):
+        return False
+    if isinstance(b, Union):
+        if isinstance(a, Union):
+            return all(any(type_subset(x, y) for y in b.subtypes)
+                       for x in a.subtypes)
+        else:
+            return any(type_subset(a, x) for x in b.subtypes)
+    if isinstance(a, List) and isinstance(b, List):
+        return type_subset(a.item_type, b.item_type)
+    if isinstance(a, Set) and isinstance(b, Set):
+        return type_subset(a.item_type, b.item_type)
+    if isinstance(a, Tuple) and isinstance(b, BaseTuple):
+        return True
+    if isinstance(a, Tuple) and isinstance(b, Tuple):
+        return (len(a.item_types) == len(b.item_types) and
+                all(type_subset(x, y) for x, y
+                in zip(a.item_types, b.item_types)))
+    if isinstance(a, Dict) and isinstance(b, Dict):
+        return (type_subset(a.key_type, b.key_type) and
+                type_subset(a.value_type, b.value_type))
+    if isinstance(a, Maybe) and isinstance(b, Maybe):
+        return type_subset(a.subtype, b.subtype)
+    return a == b
 
 
-def type_set_match(types, classes):
-    known = known_types(types)
-    unmatched = [x for x in classes
-        if not any(isinstance(y, x) for y in types)]
-    unknowns = [x for x in types if isinstance(x, Unknown)]
-    return type_subset(known, classes) and len(unknowns) >= len(unmatched)
+def type_patterns(types, patterns):
+    return any(all(type_subset(x, y) for x, y in zip(types, pattern))
+               for pattern in patterns)
 
 
 def type_intersection(a, b):

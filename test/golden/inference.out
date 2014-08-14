@@ -4,4 +4,4 @@ z Num
 
 testcases/inference.py:2 undefined-function "random"
 testcases/inference.py:3 undefined-function "random"
-testcases/inference.py:6 type-error "Add" (Maybe(Num) vs Num or Str or List or Tuple)
+testcases/inference.py:6 type-error "Add" (Maybe(Num) vs Union(Num,Str,List(Unknown),BaseTuple))

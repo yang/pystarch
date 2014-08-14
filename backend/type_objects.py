@@ -66,6 +66,12 @@ class List(EqualityMixin, ItemTypeMixin):
         return [self.item_type.example()]
 
 
+# hack to allow testing for arbitrary-length tuple
+class BaseTuple(EqualityMixin, BasicMixin):
+    def example(self):
+        return tuple()
+
+
 class Tuple(EqualityMixin, TupleMixin):
     def __init__(self, item_types):
         self.item_types = item_types

@@ -13,8 +13,8 @@ x12 Tuple(Num,Str,Str,Num) (1, 'a', 'b', 2)
 x13 Tuple(Num,Num,Num,Num) (1, 2, 3, 4)
 x14 Str
 
-testcases/operators.py:2 type-error "Mult" ([Str, Str] vs {Num} or {Num, Str})
-testcases/operators.py:4 type-error "Mult" ([List(Unknown), List(Unknown)] vs {Num} or {Num, Str})
+testcases/operators.py:2 type-error "Mult" ([Str, Str] vs (Num, Num) or (Num, Str) or (Num, Str))
+testcases/operators.py:4 type-error "Mult" ([List(Unknown), List(Unknown)] vs (Num, Num) or (Num, Str) or (Num, Str))
 testcases/operators.py:6 type-error "List" (List(Unknown) vs Bool)
 testcases/operators.py:7 type-error "Num" (Num vs Bool)
 testcases/operators.py:9 type-error "Str" (Str vs Num)

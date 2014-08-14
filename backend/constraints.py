@@ -2,6 +2,8 @@ from functools import partial
 from type_objects import Unknown, Bool, Num, Str, List, Dict,
     Function, Class
 
+# TODO: have to take intersection of types if one symbols appears
+# multiple times in the expression
 
 def get_token(node):
     return node.__class__.__name__
