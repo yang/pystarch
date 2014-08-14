@@ -23,6 +23,7 @@ testcases/misc.py:58 missing-argument "my_function" (maxi)
 testcases/misc.py:22 reassignment "bob = ..." (bob)
 testcases/misc.py:22 undefined "sam"
 testcases/misc.py:23 reassignment "globe = ..." (globe)
+testcases/misc.py:61 undefined-function ".str"
 testcases/misc.py:35 constant-if-condition "If"
 testcases/misc.py:37 reassignment "alice = ..." (alice)
 testcases/misc.py:37 type-change "alice = ..." (alice: Num -> Str)

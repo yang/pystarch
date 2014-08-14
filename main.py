@@ -322,13 +322,11 @@ class Visitor(ast.NodeVisitor):
             self.type_error(node, 'Argument ' + str(label), got, expected)
 
     def visit_Call(self, node):
-        if not hasattr(node.func, 'id'):
-            return      # TODO: support class attributes
-        func_type = self._context.get_type(node.func.id)
-        if not func_type:
-            return self.warn('undefined-function', node, node.func.id)
+        func_type = expression_type(node.func, self._context)
+        if isinstance(func_type, Unknown):
+            return self.warn('undefined-function', node)
         if not isinstance(func_type, (Function, Class)):
-            return self.warn('not-a-function', node, node.func.id)
+            return self.warn('not-a-function', node)
 
         argtypes, kwargtypes = call_argtypes(node,
             ExtendedContext(self._context))
