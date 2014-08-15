@@ -295,6 +295,7 @@ class Visitor(ast.NodeVisitor):
             node.decorator_list)
         arguments = (Arguments.copy_without_first_argument(all_arguments)
                      if self._class_name else all_arguments)
+
         specified_types = zip(arguments.names,
             arguments.explicit_types, arguments.default_types)
         for name, explicit_type, default_type in specified_types:
