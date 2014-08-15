@@ -1,6 +1,7 @@
 import copy
 from type_objects import NoneType, Bool
 from evaluate import UnknownValue
+from util import type_intersection
 
 # Tricky: need to support obj1.obj2.x where obj2 is an instance
 # of a class that may not be defined in the current scope
@@ -30,7 +31,6 @@ class Symbol(object):
         assert name is not None
         assert type_ is not None
         self.assign(name, type_, value)
-        self._constraint = None    # NOTE: won't work well if reassigned
 
     def assign(self, name, type_, value):
         self._name = name
@@ -47,7 +47,12 @@ class Symbol(object):
         return self._value
 
     def add_constraint(self, type_):
-        self._constraint = type_   # TODO: set to intersection
+        new_type = type_intersection(self._type, type_)
+        if new_type is not None:
+            self._type = new_type
+            return new_type
+        else:
+            return None
 
     def __str__(self):
         if isinstance(self._value, UnknownValue):

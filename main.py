@@ -12,7 +12,7 @@ from backend import expression_type, call_argtypes, Arguments, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
     type_patterns, maybe_inferences, unifiable_types, Symbol, type_subset, \
-    BaseTuple
+    BaseTuple, find_constraints
 
 
 NAME = 'strictpy'
@@ -172,8 +172,19 @@ class Visitor(ast.NodeVisitor):
             details = ', '.join([str(x) for x in types])
             self.warn('inconsistent-types', root_node, details)
 
-    def check_type(self, node, type_, override=None):
-        expr_type = override if override is not None else self.expr_type(node)
+    def apply_constraints(self, node, required_type):
+        context = ExtendedContext(self._context)
+        constraints = find_constraints(node, required_type, context)
+        for name, constrained_type in constraints:
+            symbol = self._context.get(name)
+            if symbol is not None:
+                new_type = symbol.add_constraint(constrained_type)
+                if new_type is None:
+                    self.warn('type-error', node, name)
+
+    def check_type(self, node, type_):
+        self.apply_constraints(node, type_)
+        expr_type = self.expr_type(node)
         if not type_subset(expr_type, type_):
             details = '{0} vs {1}'.format(expr_type, type_)
             self.warn('type-error', node, details)
@@ -501,9 +512,9 @@ class Visitor(ast.NodeVisitor):
                     details = ', '.join([str(x) for x in types])
                     self.warn('inconsistent-types', node, details)
             elif len(known) == 1:
-                self.check_type(node,
-                        Union(Num(), Str(), List(Unknown()), BaseTuple()),
-                    override=iter(known).next())
+                union_type = Union(Num(), Str(), List(Unknown()), BaseTuple())
+                self.check_type(node.left, union_type)
+                self.check_type(node.right, union_type)
         elif operator == 'Mod':
             if not isinstance(types[0], (Str, Unknown)):
                 self.check_type(node.left, Num())
