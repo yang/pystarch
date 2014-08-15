@@ -21,12 +21,38 @@ def find_constraints(node, result_type, context):
         return []
     recur = partial(find_constraints, context=context)
     token = get_token(node)
-    if token == 'BoolOp':
+    if token == 'BoolOp':   # And | Or
         return flatten([recur(x, Bool()) for x in node.values])
     if token == 'BinOp':
-        return recur(node.left, Num()) + recur(node.right, Num())
-    if token == 'UnaryOp':
-        return recur(node.operand, Num())
+        operator == get_token(node.op)
+        left = expression_type(node.left, context)
+        right = expression_type(node.right, context)
+        if operator == 'Add':   # TODO: allow tuple addition?
+            union_type = Union(Num(), Str(), List(Unknown))
+            intersection = type_intersection(left, right)
+            required_type = type_intersection(intersection, union_type)
+            return (recur(node.left, required_type)
+                  + recur(node.right, required_type))
+        elif operator == 'Mult':
+            if isinstance(left, Str):
+                return (recur(node.left, Str()) + recur(node.right, Num()))
+            if isinstance(right, Str):
+                return (recur(node.left, Num()) + recur(node.right, Str()))
+            union_type = Union(Num(), Str())
+            return recur(node.left, union_type) + recur(node.right, union_type)
+        elif operator == 'Mod':
+            if isinstance(left, Str) or isinstance(right, Str):
+                return (recur(node.left, Str()) + recur(node.right, Str()))
+            union_type = Union(Num(), Str())
+            return recur(node.left, union_type) + recur(node.right, union_type)
+        else:
+            return recur(node.left, Num()) + recur(node.right, Num())
+    if token == 'UnaryOp': # Invert | Not | UAdd | USub
+        operator = get_token(node.op)
+        if operator == 'Not':
+            return recur(node.operand, Bool())
+        else:
+            return recur(node.operand, Num())
     if token == 'IfExp':
         return (recur(node.test, Bool())
                 + recur(node.body, result_type)
@@ -46,13 +72,26 @@ def find_constraints(node, result_type, context):
         else:
             return []
     if token == 'ListComp':
-        return []
+        if isinstance(result_type, List):
+            return recur(node.elt, result_type.item_type)
+        else:
+            return []
     if token == 'SetComp':
-        return []
+        if isinstance(result_type, Set):
+            return recur(node.elt, result_type.item_type)
+        else:
+            return []
     if token == 'DictComp':
-        return []
+        if isinstance(result_type, Dict):
+            return (recur(node.key, result_type.key_type)
+                  + recur(node.value, result_type.value_type))
+        else:
+            return []
     if token == 'GeneratorExp':
-        return []
+        if isinstance(result_type, List):
+            return recur(node.elt, result_type.item_type)
+        else:
+            return []
     if token == 'Compare':
         operator = get_token(node.ops[0])
         if operator in ['Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE']:
