@@ -18,7 +18,7 @@ class BasicMixin(object):
 
 class ItemTypeMixin(object):
     def __str__(self):
-        return '{0}({1})'.format(self.__class__.__name__, self.item_type)
+        return '{0}({1})'.format(self.__class__.__name__, str(self.item_type))
 
 
 class TupleMixin(object):
@@ -154,6 +154,7 @@ class Maybe(EqualityMixin):
 class Union(EqualityMixin):
     def __init__(self, *subtypes):
         assert len(subtypes) > 0
+        assert not any(isinstance(x, list) for x in subtypes)
         self.subtypes = subtypes
 
     def example(self):

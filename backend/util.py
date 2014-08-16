@@ -128,7 +128,7 @@ def type_intersection(a, b):
         elif len(common) == 1:
             return common[0]
         else:
-            return Union(common)
+            return Union(*common)
     elif isinstance(a, Union):
         return b if b in a.subtypes else None
     elif isinstance(b, Union):

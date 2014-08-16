@@ -1,7 +1,7 @@
 
 
 def f(a, b, c):
-    d = a + b
+    d = a + b       # tricky: limit a and b to Num!!
     e = d - 4
     return e
 
@@ -11,3 +11,7 @@ def g(x):
 
 def h(x):
     return x + 1
+
+
+def j(x):
+    return x[0]

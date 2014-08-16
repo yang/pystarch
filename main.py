@@ -398,6 +398,7 @@ class Visitor(ast.NodeVisitor):
     def visit_Assign(self, node):
         for target in node.targets:
             self.check_assign(node, target, node.value)
+        self.check_type(node.value, Unknown())
         self.generic_visit(node)
 
     def visit_AugAssign(self, node):

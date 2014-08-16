@@ -1,7 +1,7 @@
 import expr
 from functools import partial
 from type_objects import Unknown, Bool, Num, Str, List, Dict, \
-    Function, Class, Tuple, NoneType, Set, Union
+    Function, Class, Tuple, NoneType, Set, Union, BaseTuple
 from util import type_intersection
 
 
@@ -123,7 +123,8 @@ def find_constraints(node, result_type, context):
     if token == 'Attribute':
         return []
     if token == 'Subscript':
-        return []   # TODO: check type of slice
+        # TODO: check type of slice
+        return recur(node.value, Union(List(Unknown()), BaseTuple()))
     if token == 'Name':
         return ([(node.id, result_type)]
                 if not isinstance(result_type, Unknown) else [])
