@@ -9,4 +9,4 @@ from util import type_subset, known_types, unify_types, \
 from inference import maybe_inferences
 from assign import assign
 from constraints import find_constraints
-from function import call_argtypes, Arguments
+from function import call_argtypes, Arguments, construct_function_type

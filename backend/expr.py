@@ -125,14 +125,10 @@ def expression_type(node, context):
         return Bool()
     if token == 'Call':
         function_type = recur(node.func)
-        if isinstance(function_type, Class):
+        if isinstance(function_type, (Class, Function)):
             return function_type.return_type
-        if not isinstance(function_type, Function):
+        else:
             return Unknown()
-        arguments = function_type.arguments
-        argument_scope = make_argument_scope(node, arguments, context)
-        return_type, _, _ = function_type.return_type(argument_scope)
-        return return_type
     if token == 'Repr':    # TODO: is Repr a Str?
         return Str()
     if token == 'Num':

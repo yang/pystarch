@@ -99,8 +99,13 @@ def type_subset(a, b):
     if isinstance(a, Dict) and isinstance(b, Dict):
         return (type_subset(a.key_type, b.key_type) and
                 type_subset(a.value_type, b.value_type))
-    if isinstance(a, Maybe) and isinstance(b, Maybe):
-        return type_subset(a.subtype, b.subtype)
+    if isinstance(b, Maybe):
+        if isinstance(a, NoneType):
+            return True
+        elif isinstance(a, Maybe):
+            return type_subset(a.subtype, b.subtype)
+        else:
+            return type_subset(a, b.subtype)
     return a == b
 
 

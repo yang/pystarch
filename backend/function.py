@@ -1,5 +1,6 @@
 import expr
-from type_objects import List, Dict, Unknown
+from context import Symbol, Scope
+from type_objects import List, Dict, Unknown, Function, NoneType, Instance
 
 
 def get_token(node):
@@ -30,7 +31,7 @@ class Arguments(object):
             self.names = []
             self.types = []
             self.default_types = []
-            self.explicit_types = []
+            self.annotated_types = []
             self.vararg_name = None
             self.kwarg_name = None
             self.min_count = 0
@@ -41,11 +42,11 @@ class Arguments(object):
         default_types = [expr.expression_type(d, context)
                             for d in arguments.defaults]
         self.default_types = ([Unknown()] * self.min_count) + default_types
-        self.explicit_types = self.get_explicit_argtypes(
+        self.annotated_types = self._get_annotated_types(
             decorator_list, context)
-        self.types = [explicit if explicit != Unknown() else default
-            for explicit, default
-            in zip(self.explicit_types, self.default_types)]
+        self.types = [annotated if annotated != Unknown() else default
+            for annotated, default
+            in zip(self.annotated_types, self.default_types)]
         self.vararg_name = arguments.vararg
         self.kwarg_name = arguments.kwarg
 
@@ -61,16 +62,21 @@ class Arguments(object):
         arguments.names = other_arguments.names[1:]
         arguments.types = other_arguments.types[1:]
         arguments.default_types = other_arguments.default_types[1:]
-        arguments.explicit_types = other_arguments.explicit_types[1:]
+        arguments.annotated_types = other_arguments.annotated_types[1:]
         arguments.min_count = max(0, other_arguments.min_count - 1)
         arguments.vararg_name = other_arguments.vararg_name
         arguments.kwarg_name = other_arguments.kwarg_name
         return arguments
 
+    def set_type(self, name, type_):
+        for i, arg_name in enumerate(self.names):
+            if arg_name == name:
+                self.types[i] = type_
+
     def get_dict(self):
         return dict(zip(self.names, self.types))
 
-    def get_explicit_argtypes(self, decorator_list, context):
+    def _get_annotated_types(self, decorator_list, context):
         types_decorator = [d for d in decorator_list
             if get_token(d) == 'Call' and d.func.id == 'types']
         if len(types_decorator) == 1:
@@ -80,13 +86,13 @@ class Arguments(object):
         return argtypes + [kwargtypes.get(name, Unknown())
             for name in self.names[len(argtypes):]]
 
-    def load_context(self, context):
+    def load_scope(self, scope):
         for name, argtype in self.get_dict().items():
-            context.add_symbol(name, argtype)
+            scope.add(Symbol(name, argtype))
         if self.vararg_name:
-            context.add_symbol(self.vararg_name, List(Unknown()))
+            scope.add(Symbol(self.vararg_name, List(Unknown())))
         if self.kwarg_name:
-            context.add_symbol(self.kwarg_name, Dict(Unknown(), Unknown()))
+            scope.add(Symbol(self.kwarg_name, Dict(Unknown(), Unknown())))
 
     def __str__(self):
         vararg = (', {0}: Tuple'.format(self.vararg_name)
@@ -97,17 +103,30 @@ class Arguments(object):
             in zip(self.names, self.types)) + vararg + kwarg)
 
 
-def load_argument_symbols(arguments, scope):
-    for argument in arguments.args:
-        scope.add(argument.id, Unknown())
-    if node.vararg is not None:
-        scope.add(node.vararg.id, List(Unknown()))
-    if node.kwarg is not None:
-        scope.add(node.kwarg.id, Dict(Unknown(), Unknown()))
+def analyze_function(node, arguments, visitor):
+    visitor.begin_scope()
+    arguments.load_scope(visitor.scope())
+    for stmt in node.body:
+        visitor.visit(stmt)
+    scope = visitor.end_scope()
+    _, warnings, annotations = visitor.report()
+    return_type = scope.get_type() or NoneType()
+    return return_type, warnings, annotations
 
 
 def construct_function_type(node, visitor):  # FunctionDef node
     visitor.begin_scope()
-    load_argument_symbols(node.args, visitor.scope())
-    visitor.visit(node.body)
+    initial_arguments = Arguments(node.args, visitor.context())
+    initial_arguments.load_scope(visitor.scope())
+    for stmt in node.body:
+        visitor.visit(stmt)
     scope = visitor.end_scope()
+    arguments = Arguments(node.args, visitor.context())
+    for argument in node.args.args:
+        if argument.id in scope:
+            arguments.set_type(argument.id, scope.get_type(argument.id))
+    return_type, warnings, annotations = analyze_function(
+        node, arguments, visitor)
+    if node.name == '__init__':
+        return_type = Instance('Class', Scope()) # TODO
+    return Function(arguments, return_type), warnings, annotations

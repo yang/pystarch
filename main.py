@@ -12,7 +12,7 @@ from backend import expression_type, call_argtypes, Arguments, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
     type_patterns, maybe_inferences, unifiable_types, Symbol, type_subset, \
-    BaseTuple, find_constraints
+    BaseTuple, find_constraints, construct_function_type
 
 
 NAME = 'strictpy'
@@ -141,6 +141,9 @@ class Visitor(ast.NodeVisitor):
     def scope(self):
         return self._context.get_top_scope()
 
+    def context(self):
+        return ExtendedContext(self._context)
+
     def warnings(self):
         return self._warnings
 
@@ -161,10 +164,10 @@ class Visitor(ast.NodeVisitor):
         self._warnings.append(warning)
 
     def expr_type(self, node):
-        return expression_type(node, ExtendedContext(self._context))
+        return expression_type(node, self.context())
 
     def evaluate(self, node):
-        return static_evaluate(node, ExtendedContext(self._context))
+        return static_evaluate(node, self.context())
 
     def consistent_types(self, check_func, root_node, nodes):
         types = [self.expr_type(node) for node in nodes]
@@ -173,8 +176,7 @@ class Visitor(ast.NodeVisitor):
             self.warn('inconsistent-types', root_node, details)
 
     def apply_constraints(self, node, required_type):
-        context = ExtendedContext(self._context)
-        constraints = find_constraints(node, required_type, context)
+        constraints = find_constraints(node, required_type, self.context())
         for name, constrained_type in constraints:
             symbol = self._context.get(name)
             if symbol is not None:
@@ -290,8 +292,27 @@ class Visitor(ast.NodeVisitor):
         self._context.add(Symbol(node.name, class_type, UnknownValue()))
 
     def visit_FunctionDef(self, node):
+        visitor = Visitor(self._filepath, self.context())
+        function_type, warnings, annotations = construct_function_type(
+            node, visitor)
+        self._context.add(Symbol(node.name, function_type, UnknownValue()))
+
+        self._annotations.extend(annotations)
+        self._warnings.extend(warnings)
+
+        # now check that all the types are consistent between
+        # the default types, annotated types, and constrained types
+        arguments = function_type.arguments
+        types = zip(arguments.names, arguments.types,
+            arguments.annotated_types, arguments.default_types)
+        for name, constrained_type, annotated_type, default_type in types:
+            if (annotated_type != Unknown() and default_type != Unknown() and
+                    default_type != annotated_type):
+                self.warn('default-argument-type-error', node, name)
+
+    def _visit_FunctionDef(self, node):
         # TODO: make sure at least one arg when inside class
-        all_arguments = Arguments(node.args, ExtendedContext(self._context),
+        all_arguments = Arguments(node.args, self.context(),
             node.decorator_list)
         arguments = (Arguments.copy_without_first_argument(all_arguments)
                      if self._class_name else all_arguments)
@@ -336,8 +357,7 @@ class Visitor(ast.NodeVisitor):
         if not isinstance(func_type, (Function, Class)):
             return self.warn('not-a-function', node)
 
-        argtypes, kwargtypes = call_argtypes(node,
-            ExtendedContext(self._context))
+        argtypes, kwargtypes = call_argtypes(node, self.context())
         # make sure all required arguments are specified
         minargs = func_type.arguments.min_count
         required_kwargs = func_type.arguments.names[len(argtypes):minargs]
@@ -363,15 +383,6 @@ class Visitor(ast.NodeVisitor):
                     self.warn('extra-keyword', node, name)
                 else:
                     self.check_argument_type(node, name, kwargtype, [deftype])
-
-        # Add warnings from function body (probably already cached)
-        if isinstance(func_type, Function): # skip class constructors
-            argument_scope = make_argument_scope(node, func_type.arguments,
-                ExtendedContext(self._context))
-            _, warnings, annotations = func_type.return_type(
-                argument_scope, True)
-            self._annotations.extend(annotations)
-            self._warnings.extend(warnings)
 
         self.generic_visit(node)
 
@@ -451,11 +462,11 @@ class Visitor(ast.NodeVisitor):
     def visit_If(self, node):
         self.visit(node.test)
         self.check_type(node.test, Bool())
-        test_value = static_evaluate(node.test, ExtendedContext(self._context))
+        test_value = static_evaluate(node.test, self.context())
         if not isinstance(test_value, UnknownValue):
             self.warn('constant-if-condition', node)
 
-        ext_ctx = ExtendedContext(self._context)
+        ext_ctx = self.context()
         if_inferences, else_inferences = maybe_inferences(node.test, ext_ctx)
         if_scope = self._visit_branch(node.body, if_inferences)
         else_scope = self._visit_branch(node.orelse, else_inferences)
