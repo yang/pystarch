@@ -387,6 +387,7 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Return(self, node):
+        self.check_type(node.value, Unknown())
         self.check_return(node)
         self.generic_visit(node)
 
@@ -597,6 +598,9 @@ class Visitor(ast.NodeVisitor):
         assign_generators(node.generators, self._context)
         self.generic_visit(node)
         self.end_scope()
+
+    def visit_Expr(self, node):
+        self.check_type(node.value, Unknown())    # trigger find_constraints
 
 
 def analyze(source, filepath=None, context=None, imported=[]):

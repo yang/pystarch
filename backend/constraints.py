@@ -1,7 +1,7 @@
+import expr
 from functools import partial
 from type_objects import Unknown, Bool, Num, Str, List, Dict, \
-    Function, Class, Tuple, NoneType
-from expr import expression_type
+    Function, Class, Tuple, NoneType, Set, Union
 from util import type_intersection
 
 
@@ -24,9 +24,9 @@ def find_constraints(node, result_type, context):
     if token == 'BoolOp':   # And | Or
         return flatten([recur(x, Bool()) for x in node.values])
     if token == 'BinOp':
-        operator == get_token(node.op)
-        left = expression_type(node.left, context)
-        right = expression_type(node.right, context)
+        operator = get_token(node.op)
+        left = expr.expression_type(node.left, context)
+        right = expr.expression_type(node.right, context)
         if operator == 'Add':   # TODO: allow tuple addition?
             union_type = Union(Num(), Str(), List(Unknown))
             intersection = type_intersection(left, right)
@@ -98,21 +98,21 @@ def find_constraints(node, result_type, context):
             # all operands are constrained to have the same type
             # as their intersection
             exprs = [node.left] + node.comparators
-            types = [expression_type(expr, context) for expr in exprs]
+            types = [expr.expression_type(expr, context) for e in exprs]
             intersection = reduce(type_intersection, types)
-            return flatten([recur(expr, intersection) for expr in exprs])
+            return flatten([recur(expr, intersection) for e in exprs])
         if operator in ['Is', 'IsNot']:
             return recur(node.comparators[0], NoneType())
         if operator in ['In', 'NotIn']:
             # constrain right to list/set of left, and left to instance of right
-            left = expression_type(node.left, context)
-            right = expression_type(node.right, context)
+            left = expr.expression_type(node.left, context)
+            right = expr.expression_type(node.right, context)
             result = recur(node.right, Union(List(left), Set(left)))
             if isinstance(left, (List, Set)):
                 result += recur(node.left, node.comparators[0].item_type)
             return result
     if token == 'Call':
-        func_type = expression_type(node.func, context)
+        func_type = expr.expression_type(node.func, context)
         if not isinstance(func_type, (Function, Class)):
             return []
         arg_types = func_type.arguments.types
@@ -126,7 +126,7 @@ def find_constraints(node, result_type, context):
         return []   # TODO: check type of slice
     if token == 'Name':
         return ([(node.id, result_type)]
-                if not isinstance(result_type, Unknown) else None)
+                if not isinstance(result_type, Unknown) else [])
     if token == 'List':
         if isinstance(result_type, List):
             return flatten([recur(x, result_type.subtype) for x in node.elts])

@@ -5,3 +5,9 @@ def f(a, b, c):
     e = d - 4
     return e
 
+
+def g(x):
+    return -x
+
+def h(x):
+    return x + 1

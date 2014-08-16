@@ -1,6 +1,8 @@
 import expr
 from context import Symbol, Scope
 from type_objects import List, Dict, Unknown, Function, NoneType, Instance
+from constraints import find_constraints
+from util import type_intersection
 
 
 def get_token(node):
@@ -50,6 +52,9 @@ class Arguments(object):
         self.vararg_name = arguments.vararg
         self.kwarg_name = arguments.kwarg
 
+    def __contains__(self, name):
+        return name in self.names
+
     def __len__(self):
         return len(self.names)
 
@@ -68,10 +73,15 @@ class Arguments(object):
         arguments.kwarg_name = other_arguments.kwarg_name
         return arguments
 
-    def set_type(self, name, type_):
+    def constrain_type(self, name, type_):
         for i, arg_name in enumerate(self.names):
             if arg_name == name:
-                self.types[i] = type_
+                intersection = type_intersection(type_, self.types[i])
+                if intersection is not None:
+                    self.types[i] = intersection
+                    return intersection
+                else:
+                    return None
 
     def get_dict(self):
         return dict(zip(self.names, self.types))
@@ -116,15 +126,14 @@ def analyze_function(node, arguments, visitor):
 
 def construct_function_type(node, visitor):  # FunctionDef node
     visitor.begin_scope()
-    initial_arguments = Arguments(node.args, visitor.context())
-    initial_arguments.load_scope(visitor.scope())
+    arguments = Arguments(node.args, visitor.context())
+    arguments.load_scope(visitor.scope())
     for stmt in node.body:
         visitor.visit(stmt)
     scope = visitor.end_scope()
-    arguments = Arguments(node.args, visitor.context())
     for argument in node.args.args:
         if argument.id in scope:
-            arguments.set_type(argument.id, scope.get_type(argument.id))
+            arguments.constrain_type(argument.id, scope.get_type(argument.id))
     return_type, warnings, annotations = analyze_function(
         node, arguments, visitor)
     if node.name == '__init__':
