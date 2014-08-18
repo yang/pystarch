@@ -13,7 +13,7 @@ def assign_single_target(target, assigned_type, static_value, context):
         context.add(new_symbol)
         return (target.id, old_symbol, new_symbol)
     elif target_token == 'Subscript':
-        value = expr.expression_type(target.value)
+        value = expr.expression_type(target.value, context)
         # TODO: implement this
         return ('Subscript', None, None)
     elif target_token == 'Attribute':
@@ -37,7 +37,7 @@ def assign(target, value, context, generator=False):
         if isinstance(value_type, (List, Set)):
             assign_type = value_type.item_type
         elif isinstance(value_type, Tuple):
-            assign_type = value_type.item_types[0]  # TODO: warn here
+            return []       # TODO
         else:
             return []
     else:

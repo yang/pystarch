@@ -26,9 +26,9 @@ def _unify_types(a, b):
         return b if isinstance(b, Maybe) else Maybe(b)
     elif isinstance(b, NoneType):
         return a if isinstance(a, Maybe) else Maybe(a)
-    elif isinstance(a, Maybe) and isinstance(b, a.subtype):
+    elif isinstance(a, Maybe) and type_subset(b, a.subtype):
         return a
-    elif isinstance(b, Maybe) and isinstance(a, b.subtype):
+    elif isinstance(b, Maybe) and type_subset(a, b.subtype):
         return b
     else:
         return Unknown()

@@ -1,5 +1,31 @@
 
-NEXT: infer type of function arguments based on usage
+
+the logic in find_constraints is redundant with the information contained
+in the check_type calls in main.py. We should be able to just use check_type
+to constrain the types of symbols. The problem is that I don't know how to
+propagate the required type down through the whole expression.
+- Perhaps we can remove all the check_type logic for expressions from
+  Visitor and just rely on the find_constraints function to do type checking
+  within expressions.
+
+Another idea is to make a ModuleVisitor and a FunctionVisitor
+where ModuleVisitor just supports imports, function defs, and classdefs,
+and assignments, whereas a functionvisitor supports things like for, while,
+if, etc. Though there are things like "if __name__ == '__main__'"...
+But it would be nice to separate out the import logic at least. We could
+make ModuleVisitor a superclass of functionvisitor, just to pull out the
+import garbage.
+
+Make two separate Visitor classes. One for computing constraints and
+keeping track of the context, and one just for checking for warnings.
+They can be dynamically merged and executed in parallel.
+
+Can create a chain of visitors. The higher visitors override the visit
+function and call the base vistor handlers first.
+
+* Actually it's not clear that splitting into 2 visitor will really help
+much because we usually have to check for error cases anyways in the base
+visitor
 
 
 Store computed type of every function call, and every function argument,

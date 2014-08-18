@@ -98,16 +98,16 @@ def find_constraints(node, result_type, context):
             # all operands are constrained to have the same type
             # as their intersection
             exprs = [node.left] + node.comparators
-            types = [expr.expression_type(expr, context) for e in exprs]
+            types = [expr.expression_type(e, context) for e in exprs]
             intersection = reduce(type_intersection, types)
-            return flatten([recur(expr, intersection) for e in exprs])
+            return flatten([recur(e, intersection) for e in exprs])
         if operator in ['Is', 'IsNot']:
             return recur(node.comparators[0], NoneType())
         if operator in ['In', 'NotIn']:
             # constrain right to list/set of left, and left to instance of right
             left = expr.expression_type(node.left, context)
-            right = expr.expression_type(node.right, context)
-            result = recur(node.right, Union(List(left), Set(left)))
+            right = expr.expression_type(node.comparators[0], context)
+            result = recur(node.comparators[0], Union(List(left), Set(left)))
             if isinstance(left, (List, Set)):
                 result += recur(node.left, node.comparators[0].item_type)
             return result
@@ -130,13 +130,13 @@ def find_constraints(node, result_type, context):
                 if not isinstance(result_type, Unknown) else [])
     if token == 'List':
         if isinstance(result_type, List):
-            return flatten([recur(x, result_type.subtype) for x in node.elts])
+            return flatten([recur(x, result_type.item_type) for x in node.elts])
         else:
             return []
     if token == 'Tuple':
         if isinstance(result_type, Tuple):
             return flatten([recur(x, y) for x, y
-                            in zip(node.elts, result_type.subtypes)])
+                            in zip(node.elts, result_type.item_types)])
         else:
             return []
     if token in ['Num', 'Str', 'Repr', 'Lambda', 'Yield']:

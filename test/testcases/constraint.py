@@ -1,5 +1,9 @@
 
 
+# 1. keep looping through and adding more constraints until no change
+# 2. dynamically trigger constraint updates when new constraints appear
+#       using a network of constraints
+
 def f(a, b, c):
     d = a + b       # tricky: limit a and b to Num!!
     e = d - 4

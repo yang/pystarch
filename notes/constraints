@@ -40,3 +40,16 @@ for the conditional of an "if" statement should be a boolean.
 
 So we need a module that takes an expression, a context, and a required result
 type. It then returns the inferred types of all the names in the expression.
+
+
+LOOPING OR NETWORK PROPAGATION
+==============================
+c = a + b
+d = c - 1
+We should be able to deduce that a and b are Num (not Str) from this. The
+problem is that information has to propagate backwards in order to determine
+this. So we could either propagate the information through a network of
+constraints or just keep the one-way processing, but loop over the same block
+until the constraints remain unchanged. I think the looping method is simpler.
+
+

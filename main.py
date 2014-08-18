@@ -12,7 +12,7 @@ from backend import expression_type, call_argtypes, Arguments, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
     type_patterns, maybe_inferences, unifiable_types, Symbol, type_subset, \
-    BaseTuple, find_constraints, construct_function_type
+    BaseTuple, find_constraints, construct_function_type, type_intersection
 
 
 NAME = 'strictpy'
@@ -89,45 +89,6 @@ def import_from_chain(fully_qualified_name, level, current_filepath, imported):
         get_path_for_level(current_filepath, level), imported)
 
 
-class FunctionEvaluator(object):
-    def __init__(self, filepath, body_node, def_context):
-        self.filepath = filepath
-        self.body_node = body_node
-        self.context = def_context
-        self.cache = []
-        self.recursion_block = False
-
-    def evaluate(self, argument_scope, clear_warnings=False):
-        if self.recursion_block:
-            return Unknown(), [], []
-        self.context.begin_scope()
-        self.context.merge_scope(argument_scope)
-        self.recursion_block = True
-        visitor = Visitor(self.filepath, self.context)
-        for stmt in self.body_node:
-            visitor.visit(stmt)
-        self.recursion_block = False
-        _, warnings, annotations = visitor.report()
-        scope = self.context.end_scope()
-        return_type = scope.get_type() or NoneType()
-        return return_type, warnings, annotations
-
-    def __call__(self, argument_scope, clear_warnings=False):
-        for i, item in enumerate(self.cache):
-            cache_argument_scope, result = item
-            if cache_argument_scope == argument_scope:
-                if clear_warnings:
-                    return_type, _, _ = result
-                    cache_result = return_type, [], annotations
-                    self.cache[i] = (cache_argument_scope, cache_result)
-                return result
-        result = self.evaluate(argument_scope, clear_warnings)
-        cache_result = ((result[0], [], result[2])
-                         if clear_warnings else result)
-        self.cache.append((argument_scope, cache_result))
-        return result
-
-
 class Visitor(ast.NodeVisitor):
     def __init__(self, filepath='', context=None, imported=[]):
         ast.NodeVisitor.__init__(self)
@@ -175,7 +136,7 @@ class Visitor(ast.NodeVisitor):
             details = ', '.join([str(x) for x in types])
             self.warn('inconsistent-types', root_node, details)
 
-    def apply_constraints(self, node, required_type):
+    def apply_constraints(self, node, required_type=Unknown()):
         constraints = find_constraints(node, required_type, self.context())
         for name, constrained_type in constraints:
             symbol = self._context.get(name)
@@ -310,35 +271,6 @@ class Visitor(ast.NodeVisitor):
                     default_type != annotated_type):
                 self.warn('default-argument-type-error', node, name)
 
-    def _visit_FunctionDef(self, node):
-        # TODO: make sure at least one arg when inside class
-        all_arguments = Arguments(node.args, self.context(),
-            node.decorator_list)
-        arguments = (Arguments.copy_without_first_argument(all_arguments)
-                     if self._class_name else all_arguments)
-
-        specified_types = zip(arguments.names,
-            arguments.explicit_types, arguments.default_types)
-        for name, explicit_type, default_type in specified_types:
-            if (explicit_type != Unknown() and default_type != Unknown() and
-                    default_type != explicit_type):
-                self.warn('default-argument-type-error', node, name)
-        if self._class_name and node.name == '__init__':
-            self.begin_scope()
-            self_name = all_arguments.names[0]
-            # TODO: have to add argument types to scope (at least default args)
-            self._context.add(Symbol(self_name,
-                              Instance(self._class_name, Scope())))
-            for stmt in node.body:
-                self.visit(stmt)
-            scope = self.end_scope()
-            return_type = scope.get_type(self_name)
-        else:
-            return_type = FunctionEvaluator(self._filepath, node.body,
-                self._context.copy())
-        function_type = Function(arguments, return_type)
-        self._context.add(Symbol(node.name, function_type, UnknownValue()))
-
     def type_error(self, node, label, got, expected):
         template = '{0} expected type {1} but got {2}'
         expected_str = [str(x) for x in expected]
@@ -387,7 +319,7 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Return(self, node):
-        self.check_type(node.value, Unknown())
+        self.apply_constraints(node.value)
         self.check_return(node)
         self.generic_visit(node)
 
@@ -398,11 +330,19 @@ class Visitor(ast.NodeVisitor):
     def visit_Assign(self, node):
         for target in node.targets:
             self.check_assign(node, target, node.value)
-        self.check_type(node.value, Unknown())
+        types = map(self.expr_type, node.targets + [node.value])
+        intersection = reduce(type_intersection, types)
+        self.apply_constraints(node.value, intersection)
+        for target in node.targets:
+            self.apply_constraints(target, intersection)
         self.generic_visit(node)
 
     def visit_AugAssign(self, node):
         self.check_assign(node, node.target, node.value)
+        types = map(self.expr_type, [node.target, node.value])
+        intersection = type_intersection(*types)
+        self.apply_constraints(node.target, intersection)
+        self.apply_constraints(node.value, intersection)
         self.generic_visit(node)
 
     def visit_Compare(self, node):
@@ -462,7 +402,7 @@ class Visitor(ast.NodeVisitor):
         return scope
 
     def visit_If(self, node):
-        self.visit(node.test)
+        self.visit(node.test)   # is this necessary?
         self.check_type(node.test, Bool())
         test_value = static_evaluate(node.test, self.context())
         if not isinstance(test_value, UnknownValue):
@@ -511,6 +451,8 @@ class Visitor(ast.NodeVisitor):
 
     def visit_Index(self, node):
         # index can mean list index or dict lookup, so could be any type
+        self.check_type(node.value, Union(List(Unknown()), BaseTuple(),
+                                          Dict(Unknown(), Unknown())))
         self.generic_visit(node)
 
     def visit_BinOp(self, node):
