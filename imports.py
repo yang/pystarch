@@ -3,7 +3,7 @@ import sys, os, imp, marshal, meta
 import cPickle as pickle
 from hashlib import sha256
 from visitor import ScopeVisitor
-from backend import Scope, Symbol, UnknownValue, Instance
+from backend import Scope, Symbol, UnknownValue, Instance, Unknown
 
 
 NAME = 'strictpy'

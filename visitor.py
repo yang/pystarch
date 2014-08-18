@@ -1,14 +1,12 @@
 # pylint: disable=invalid-name
-import sys
-import os
 import ast
 from warning import NodeWarning
 from backend import expression_type, call_argtypes, Arguments, \
-    assign, make_argument_scope, get_token, assign_generators, \
-    unify_types, known_types, Context, ExtendedContext, Scope, Union, \
+    assign, get_token, assign_generators, \
+    unify_types, known_types, ExtendedContext, Scope, Union, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
-    type_patterns, maybe_inferences, unifiable_types, Symbol, type_subset, \
+    maybe_inferences, unifiable_types, Symbol, type_subset, Context, \
     BaseTuple, find_constraints, construct_function_type, type_intersection
 
 
@@ -17,7 +15,7 @@ class ScopeVisitor(ast.NodeVisitor):
         ast.NodeVisitor.__init__(self)
         self._filepath = filepath
         self._warnings = []
-        self._context = context if context is not None else builtin_context()
+        self._context = context if context is not None else Context()
         self._imported = imported
         self._annotations = []
         self._class_name = None     # the name of the class we are inside
