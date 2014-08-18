@@ -2,12 +2,12 @@
 import ast
 from warning import NodeWarning
 from backend import expression_type, call_argtypes, Arguments, \
-    assign, get_token, assign_generators, \
+    assign, get_token, assign_generators, type_intersection, \
     unify_types, known_types, ExtendedContext, Scope, Union, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
     maybe_inferences, unifiable_types, Symbol, type_subset, Context, \
-    BaseTuple, find_constraints, construct_function_type, type_intersection
+    BaseTuple, find_constraints, construct_function_type
 
 
 class ScopeVisitor(ast.NodeVisitor):
@@ -40,6 +40,9 @@ class ScopeVisitor(ast.NodeVisitor):
 
     def end_scope(self):
         return self._context.end_scope()
+
+    def merge_scope(self, scope):
+        self._context.get_top_scope().merge_scope(scope)
 
     def warn(self, category, node, details=None):
         warning = NodeWarning(self._filepath, category, node, details)
@@ -144,7 +147,7 @@ class ScopeVisitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         visitor = ScopeVisitor(self._filepath, self.context())
         function_type, warnings, annotations = construct_function_type(
-            node, visitor)
+        node, visitor)
         self._context.add(Symbol(node.name, function_type, UnknownValue()))
 
         self._annotations.extend(annotations)

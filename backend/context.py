@@ -65,6 +65,9 @@ class Scope(object):
         self._symbols = {}
         self._return = None
 
+    def __hash__(self):
+        return hash(frozenset(self._symbols.items())) + hash(self._return)
+
     def names(self):
         return self._symbols.keys()
 

@@ -52,6 +52,9 @@ class Arguments(object):
         self.vararg_name = arguments.vararg
         self.kwarg_name = arguments.kwarg
 
+    def __hash__(self):
+        return hash(tuple(self.types))
+
     def __contains__(self, name):
         return name in self.names
 
@@ -82,6 +85,11 @@ class Arguments(object):
                     return intersection
                 else:
                     return None
+
+    def constrain_types(self, scope):
+        for name in self.names:
+            if name in scope:
+                self.constrain_type(name, scope.get_type(name))
 
     def get_dict(self):
         return dict(zip(self.names, self.types))
@@ -124,18 +132,20 @@ def analyze_function(node, arguments, visitor):
     return return_type, warnings, annotations
 
 
-def construct_function_type(node, visitor):  # FunctionDef node
-    visitor.begin_scope()
-    arguments = Arguments(node.args, visitor.context())
-    arguments.load_scope(visitor.scope())
-    for stmt in node.body:
-        visitor.visit(stmt)
-    scope = visitor.end_scope()
-    for argument in node.args.args:
-        if argument.id in scope:
-            arguments.constrain_type(argument.id, scope.get_type(argument.id))
+def construct_function_type(functiondef_node, visitor):
+    arguments = Arguments(functiondef_node.args, visitor.context())
+    last_hash = None
+    while hash(arguments) != last_hash:
+        last_hash = hash(arguments)
+        visitor.begin_scope()
+        arguments.load_scope(visitor.scope())
+        for stmt in functiondef_node.body:
+            visitor.visit(stmt)
+        scope = visitor.end_scope()
+        arguments.constrain_types(scope)
+
     return_type, warnings, annotations = analyze_function(
-        node, arguments, visitor)
-    if node.name == '__init__':
+        functiondef_node, arguments, visitor)
+    if functiondef_node.name == '__init__':
         return_type = Instance('Class', Scope()) # TODO
     return Function(arguments, return_type), warnings, annotations

@@ -1,4 +1,10 @@
 
+The ScopeVisitor is responsible for every node that is not part of an
+expression. Once you reach an expression in the tree, we branch into a
+recursive function evaluator that does error-checking for expressions
+and finds constraints on the variable names. Should we evaluate the
+expression type in the same function as we find constraints?
+
 
 the logic in find_constraints is redundant with the information contained
 in the check_type calls in main.py. We should be able to just use check_type
