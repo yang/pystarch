@@ -83,7 +83,8 @@ class NullWarnings:
 
 def visit_expression(node, expected_type, context, warnings=NullWarnings()):
     result_type = _visit_expression(node, expected_type, context, warnings)
-    if not type_subset(result_type, expected_type):
+    if (not type_subset(result_type, expected_type)
+        and not isinstance(result_type, Unknown)):
         details = '{0} vs {1}'.format(result_type, expected_type)
         warnings.warn(node, 'type-error', details)
     return result_type

@@ -50,15 +50,6 @@ class ScopeVisitor(ast.NodeVisitor):
     def evaluate(self, node):
         return static_evaluate(node, self.context())
 
-    def apply_constraints(self, node, required_type=Unknown()):
-        constraints = find_constraints(node, required_type, self.context())
-        for name, constrained_type in constraints:
-            symbol = self._context.get(name)
-            if symbol is not None:
-                new_type = symbol.add_constraint(constrained_type)
-                if new_type is None:
-                    self.warn('type-error', node, name)
-
     def check_type(self, node, expected_type=Unknown()):
         computed_type = visit_expression(node, expected_type, self.context(),
                                        self._warnings)
@@ -103,8 +94,7 @@ class ScopeVisitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         visitor = ScopeVisitor(self._filepath, self.context(),
                                warnings=self._warnings)
-        function_type, warnings, annotations = construct_function_type(
-        node, visitor)
+        function_type = construct_function_type(node, visitor)
         self._context.add(Symbol(node.name, function_type, UnknownValue()))
 
         # now check that all the types are consistent between

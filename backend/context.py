@@ -193,6 +193,16 @@ class ExtendedContext(Context):
         self._base_context = base_context
         super(ExtendedContext, self).__init__([Scope()])
 
+
+    def add_constraint(self, name, type_):
+        self._base_context.add_constraint(name, type_)
+
+    def clear_constraints(self):
+        self._base_context.clear_constraints()
+
+    def get_constraints(self):
+        return self._base_context.get_constraints()
+
     def __contains__(self, name):
         return (super(ExtendedContext, self).__contains__(name)
                 or (name in self._base_context))
