@@ -248,6 +248,14 @@ def _expression_type(node, expected_type, context, warnings):
                 return value_type.value_type
             else:
                 return Unknown()
+        elif get_token(node.slice) == 'Slice'):
+            if node.slice.lower is not None:
+                recur(node.slice.lower, Num())
+            if node.slice.upper is not None:
+                recur(node.slice.upper, Num())
+            if node.slice.step is not None:
+                recur(node.slice.step, Num())
+            return value_type
         else:
             return value_type
     if token == 'Name':

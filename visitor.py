@@ -259,40 +259,6 @@ class ScopeVisitor(ast.NodeVisitor):
         self.generic_visit(node)
         self.end_scope()
 
-    def visit_List(self, node):
-        self.consistent_types(unifiable_types, node, node.elts)
-
-    def visit_Dict(self, node):
-        self.consistent_types(unifiable_types, node, node.keys)
-        self.consistent_types(unifiable_types, node, node.values)
-
-    def visit_Set(self, node):
-        self.consistent_types(unifiable_types, node, node.elts)
-
-    def visit_ListComp(self, node):
-        self.begin_scope()
-        assign_generators(node.generators, self._context)
-        self.generic_visit(node)
-        self.end_scope()
-
-    def visit_DictComp(self, node):
-        self.begin_scope()
-        assign_generators(node.generators, self._context)
-        self.generic_visit(node)
-        self.end_scope()
-
-    def visit_SetComp(self, node):
-        self.begin_scope()
-        assign_generators(node.generators, self._context)
-        self.generic_visit(node)
-        self.end_scope()
-
-    def visit_GeneratorExp(self, node):
-        self.begin_scope()
-        assign_generators(node.generators, self._context)
-        self.generic_visit(node)
-        self.end_scope()
-
     def type_error(self, node, label, got, expected):
         template = '{0} expected type {1} but got {2}'
         expected_str = [str(x) for x in expected]
@@ -382,58 +348,5 @@ class ScopeVisitor(ast.NodeVisitor):
         else:
             self.consistent_types(comparable_types, node,
                                   [node.left] + node.comparators)
-        self.generic_visit(node)
-
-    def visit_BoolOp(self, node):
-        for value in node.values:
-            self.check_type(value, Bool())
-        self.generic_visit(node)
-
-    def visit_Slice(self, node):
-        if node.lower is not None:
-            self.check_type(node.lower, Num())
-        if node.upper is not None:
-            self.check_type(node.upper, Num())
-        if node.step is not None:
-            self.check_type(node.step, Num())
-        self.generic_visit(node)
-
-    def visit_Index(self, node):
-        # index can mean list index or dict lookup, so could be any type
-        self.check_type(node.value, Union(List(Unknown()), BaseTuple(),
-                                          Dict(Unknown(), Unknown())))
-        self.generic_visit(node)
-
-    def visit_BinOp(self, node):
-        operator = get_token(node.op)
-        types = [self.expr_type(node.left), self.expr_type(node.right)]
-        known = known_types(types)
-        if operator == 'Mult':
-            self.check_type_pattern(node, types,
-                ([Num(), Num()], [Num(), Str()], [Str(), Num()]))
-        elif operator == 'Add':
-            if len(known) > 1:
-                if not all(isinstance(x, Tuple) for x in known):
-                    details = ', '.join([str(x) for x in types])
-                    self.warn('inconsistent-types', node, details)
-            elif len(known) == 1:
-                union_type = Union(Num(), Str(), List(Unknown()), BaseTuple())
-                self.check_type(node.left, union_type)
-                self.check_type(node.right, union_type)
-        elif operator == 'Mod':
-            if not isinstance(types[0], (Str, Unknown)):
-                self.check_type(node.left, Num())
-                self.check_type(node.right, Num())
-        else:
-            self.check_type(node.left, Num())
-            self.check_type(node.right, Num())
-        self.generic_visit(node)
-
-    def visit_UnaryOp(self, node):
-        operator = get_token(node.op)
-        if operator == 'Not':
-            self.check_type(node.operand, Bool())
-        else:
-            self.check_type(node.operand, Num())
         self.generic_visit(node)
 

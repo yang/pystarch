@@ -117,6 +117,7 @@ class Scope(object):
 class Context(object):
     def __init__(self, layers=None):
         self._scope_layers = [builtin_scope()] if layers is None else layers
+        self._constraints = {}
 
     def __str__(self):
         return '\n'.join([str(layer) for layer in self._scope_layers])
@@ -172,6 +173,17 @@ class Context(object):
             if name in scope:
                 return scope
         return None
+
+    def add_constraint(self, name, type_):
+        old_type = self._constraints.get(name, self.get_type(name))
+        self._constraints[name] = (type_intersection(old_type, type_)
+            if old_type is not None else type_)
+
+    def get_constraints(self):
+        return self._constraints
+
+    def clear_constraints(self):
+        self._constraints = {}
 
 
 class ExtendedContext(Context):
