@@ -6,7 +6,7 @@ from context import Scope, Symbol
 from type_objects import Bool, Num, Str, List, Tuple, Set, BaseTuple, \
     Dict, Function, Instance, Unknown, NoneType, Class, Union, Maybe
 from evaluate import static_evaluate, UnknownValue
-from util import unique_type, unify_types, type_intersection
+from util import unique_type, unify_types, type_intersection, type_subset
 from assign import assign
 from function import Arguments, call_argtypes
 
@@ -83,8 +83,9 @@ class NullWarnings:
 
 def visit_expression(node, expected_type, context, warnings=NullWarnings()):
     result_type = _visit_expression(node, expected_type, context, warnings)
-    if result_type != expected_type:
-        warnings.warn(node, 'type-error')
+    if not type_subset(result_type, expected_type):
+        details = '{0} vs {1}'.format(result_type, expected_type)
+        warnings.warn(node, 'type-error', details)
     return result_type
 
 
