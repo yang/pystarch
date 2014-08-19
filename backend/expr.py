@@ -3,12 +3,12 @@ type validation. If there is a problem with the types, it should do some
 default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from context import Scope, Symbol
-from type_objects import Bool, Num, Str, List, Tuple, Set, \
-    Dict, Function, Instance, Unknown, NoneType, Class
+from type_objects import Bool, Num, Str, List, Tuple, Set, BaseTuple, \
+    Dict, Function, Instance, Unknown, NoneType, Class, Union, Maybe
 from evaluate import static_evaluate, UnknownValue
-from util import unique_type, unify_types
+from util import unique_type, unify_types, type_intersection
 from assign import assign
-from function import Arguments
+from function import Arguments, call_argtypes
 
 
 def get_token(node):
@@ -19,6 +19,21 @@ def add_scope_symbol(scope, name, node, context):
     typ = expression_type(node, context)
     value = static_evaluate(node, context)
     scope.add(Symbol(name, typ, value))
+
+def type_error(node, label, got, expected, warnings):
+    template = '{0} expected type {1} but got {2}'
+    expected_str = [str(x) for x in expected]
+    details = template.format(label, ' or '.join(expected_str), str(got))
+    warnings.warn(node, 'type-error', details)
+
+def check_argument_type(node, label, got, expected, warnings):
+    assert isinstance(expected, list)
+    if Unknown() not in expected and got not in expected + [NoneType()]:
+        type_error(node, 'Argument ' + str(label), got, expected, warnings)
+
+def visit_Yield(self, node):
+    self.check_return(node, is_yield=True)
+    self.generic_visit(node)
 
 
 # context is the context at call-time, not definition-time
@@ -47,14 +62,14 @@ def comprehension_type(element, generators, expected_element_type,
                        context, warnings):
     context.begin_scope()
     assign_generators(generators, context)
-    element_type = expression_type(element, expected_element_type,
+    element_type = visit_expression(element, expected_element_type,
                                    context, warnings)
     context.end_scope()
     return element_type
 
 
 class NullWarnings:
-    def warn(self, node, warning):
+    def warn(self, node, category, details=None):
         pass
 
 
@@ -66,16 +81,16 @@ class NullWarnings:
 # example, 2 / 'a' will still return Num because the division operator
 # must always return Num. Similarly, "[1,2,3] + Unknown" will return List(Num)
 
-def expression_type(node, expected_type, context, warnings=NullWarnings()):
-    result_type = _expression_type(node, expected_type, context, warnings)
+def visit_expression(node, expected_type, context, warnings=NullWarnings()):
+    result_type = _visit_expression(node, expected_type, context, warnings)
     if result_type != expected_type:
         warnings.warn(node, 'type-error')
     return result_type
 
 
-def _expression_type(node, expected_type, context, warnings):
-    recur = partial(expression_type, context=context, warnings=warnings)
-    probe = partial(_expression_type, context=context, warnings=warnings)
+def _visit_expression(node, expected_type, context, warnings):
+    recur = partial(visit_expression, context=context, warnings=warnings)
+    probe = partial(expression_type, context=context)
     comp = partial(comprehension_type, context=context, warnings=warnings)
 
     token = get_token(node)
@@ -87,17 +102,15 @@ def _expression_type(node, expected_type, context, warnings):
         operator = get_token(node.op)
         if operator == 'Add':
             union_type = Union(Num(), Str(), List(Unknown))
-            left_probe = probe(node.left, union_type)
-            right_probe = probe(node.right, union_type)
-            intersection = type_intersection(left_probe, right_probe)
-            result_type = type_intersection(intersection, union_type)
+            intersect = type_intersection(probe(node.left), probe(node.right))
+            result_type = type_intersection(intersect, union_type)
             recur(node.left, result_type or union_type)
             recur(node.right, result_type or union_type)
             return result_type if result_type else Unknown()
         elif operator == 'Mult':
             union_type = Union(Num(), Str())
-            left_probe = probe(node.left, union_type)
-            right_probe = probe(node.right, union_type)
+            left_probe = probe(node.left)
+            right_probe = probe(node.right)
             if isinstance(left_probe, Str):
                 recur(node.left, Str())
                 recur(node.right, Num())
@@ -115,8 +128,8 @@ def _expression_type(node, expected_type, context, warnings):
             return union_type
         elif operator == 'Mod':
             union_type = Union(Num(), Str())
-            left_probe = probe(node.left, union_type)
-            right_probe = probe(node.right, union_type)
+            left_probe = probe(node.left)
+            right_probe = probe(node.right)
             if isinstance(left_probe, Str) or isinstance(right_probe, Str):
                 recur(node.left, Str())
                 recur(node.right, Str())
@@ -147,7 +160,7 @@ def _expression_type(node, expected_type, context, warnings):
     if token == 'IfExp':
         recur(node.test, Bool())
         types = [recur(node.body, expected_type),
-                 recur(node.orlese, expected_type)]
+                 recur(node.orelse, expected_type)]
         return unify_types(types)
     if token == 'Dict':
         key_type = unify_types([recur(key, Unknown()) for key in node.keys])
@@ -184,31 +197,69 @@ def _expression_type(node, expected_type, context, warnings):
         return List(recur(node.value, Unkown()))
     if token == 'Compare':
         operator = get_token(node.ops[0])
+        if len(node.ops) > 1 or len(node.comparators) > 1:
+            warnings.warn(node, 'comparison-operator-chaining')
         if operator in ['Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE']:
             # all operands are constrained to have the same type
             # as their intersection
             exprs = [node.left] + node.comparators
-            types = [probe(e, Unknown()) for e in exprs]
+            types = [probe(expr) for expr in exprs]
             intersection = reduce(type_intersection, types)
             for expr in exprs:
                 recur(expr, intersection)
         if operator in ['Is', 'IsNot']:
+            recur(node.left, Maybe(Unknown()))
             recur(node.comparators[0], NoneType())
         if operator in ['In', 'NotIn']:
             # constrain right to list/set of left, and left to instance of right
-            left = probe(node.left, Unknown())
-            right = probe(node.comparators[0], Unknown())
-            recur(node.comparators[0], Union(List(left), Set(left)))
-            if isinstance(left, (List, Set)):
-                recur(node.left, node.comparators[0].item_type)
+            left_probe = probe(node.left)
+            right_probe = probe(node.comparators[0])
+            union_type = Union(List(left_probe), Set(left_probe),
+                               Dict(left_probe, Unknown()))
+            recur(node.comparators[0], union_type)
+            if isinstance(right_probe, (List, Set)):
+                recur(node.left, right_probe.item_type)
+            if isinstance(right_probe, Dict):
+                recur(node.left, right_probe.key_type)
         return Bool()
     if token == 'Call':
         function_type = recur(node.func, Unknown())
         if not isinstance(function_type, (Class, Function)):
             warnings.warn(node, 'not-a-function')
             return Unknown()
-        arg_types = func_type.arguments.types
+        arg_types = function_type.arguments.types
         # TODO: handle keyword arguments
+
+        argtypes, kwargtypes = call_argtypes(node, context)
+        # make sure all required arguments are specified
+        minargs = function_type.arguments.min_count
+        required_kwargs = function_type.arguments.names[len(argtypes):minargs]
+        missing = [name for name in required_kwargs if name not in kwargtypes]
+        for missing_argument in missing:
+            warnings.warn(node, 'missing-argument', missing_argument)
+        if function_type.arguments.vararg_name is None:
+            if len(argtypes) > len(function_type.arguments.types):
+                warnings.warn(node, 'too-many-arguments')
+        defined_argtypes = argtypes[:len(function_type.arguments.types)]
+        for i, argtype in enumerate(defined_argtypes):
+            deftype = function_type.arguments.types[i]
+            check_argument_type(node, i + 1, argtype, [deftype], warnings)
+        for name, kwargtype in kwargtypes.items():
+            if name == '*args':
+                if not isinstance(kwargtype, (Tuple, List)):
+                    warnings.warn(node, 'invlaid-vararg-type')
+            elif name == '**kwargs':
+                if not isinstance(kwargtype, Dict):
+                    warnings.warn(node, 'invalid-kwarg-type')
+            else:
+                deftype = function_type.arguments.get_dict().get(name)
+                if deftype is None:
+                    warnings.warn(node, 'extra-keyword', name)
+                else:
+                    check_argument_type(node, name, kwargtype, [deftype],
+                                        warnings)
+
+
         for arg_expr, type_ in zip(node.args, arg_types):
             recur(arg_expr, type_)
         if node.starargs is not None:
@@ -229,7 +280,7 @@ def _expression_type(node, expected_type, context, warnings):
             return Unknown()
         return value_type.attributes.get_type(node.attr) or Unknown()
     if token == 'Subscript':
-        union_type = Union(List(Unknown(), Dict(Unknown(), Unknown())),
+        union_type = Union(List(Unknown()), Dict(Unknown(), Unknown()),
                            BaseTuple())
         value_type = recur(node.value, union_type)
         if get_token(node.slice) == 'Index':
@@ -248,7 +299,7 @@ def _expression_type(node, expected_type, context, warnings):
                 return value_type.value_type
             else:
                 return Unknown()
-        elif get_token(node.slice) == 'Slice'):
+        elif get_token(node.slice) == 'Slice':
             if node.slice.lower is not None:
                 recur(node.slice.lower, Num())
             if node.slice.upper is not None:
@@ -259,8 +310,11 @@ def _expression_type(node, expected_type, context, warnings):
         else:
             return value_type
     if token == 'Name':
+        defined_type = context.get_type(node.id)
+        if defined_type is None:
+            warnings.warn(node, 'undefined', node.id)
         context.add_constraint(node.id, expected_type)
-        return context.get_type(node.id) or Unknown()
+        return defined_type or Unknown()
     if token == 'List':
         subtype = (expected_type.item_type if isinstance(expected_type, List)
                    else Unknown())
@@ -269,6 +323,10 @@ def _expression_type(node, expected_type, context, warnings):
         if (isinstance(expected_type, Tuple)
                 and len(node.elts) == len(expected_type.item_types)):
             return Tuple([recur(element, type_) for element, type_ in
-                          zip(node.elts, expected_type.item_types))
+                          zip(node.elts, expected_type.item_types)])
         return Tuple([recur(element, Unknown()) for element in node.elts])
-    raise Exception('expression_type does not recognize ' + token)
+    raise Exception('visit_expression does not recognize ' + token)
+
+
+def expression_type(expr, context):
+    return visit_expression(expr, Unknown(), context, NullWarnings())

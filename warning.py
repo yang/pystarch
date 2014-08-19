@@ -21,7 +21,7 @@ def show_node(node):
 
 
 class NodeWarning(object):
-    def __init__(self, filepath, category, node, details=None):
+    def __init__(self, filepath, node, category, details=None):
         self.filepath = filepath
         self.category = category
         self.node = node
@@ -32,3 +32,18 @@ class NodeWarning(object):
         return self.filepath + ':{0} {1} "{2}"{3}'.format(self.node.lineno,
             self.category, show_node(self.node), extra)
 
+
+class Warnings(object):
+    def __init__(self, filepath):
+        self._filepath = filepath
+        self._warnings = []
+
+    def set_filepath(self, filepath):
+        self._filepath = filepath
+
+    def warn(self, node, category, details=None):
+        warning = NodeWarning(self._filepath, node, category, details)
+        self._warnings.append(warning)
+
+    def __str__(self):
+        return ''.join([str(warning) + '\n' for warning in self._warnings])

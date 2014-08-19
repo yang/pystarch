@@ -1,20 +1,20 @@
 # pylint: disable=invalid-name
 import ast
-from warning import NodeWarning
-from backend import expression_type, call_argtypes, Arguments, \
+from warning import Warnings
+from backend import visit_expression, Arguments, \
     assign, get_token, assign_generators, type_intersection, \
     unify_types, known_types, ExtendedContext, Scope, Union, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
     maybe_inferences, unifiable_types, Symbol, type_subset, Context, \
-    BaseTuple, find_constraints, construct_function_type
+    BaseTuple, construct_function_type
 
 
 class ScopeVisitor(ast.NodeVisitor):
-    def __init__(self, filepath='', context=None, imported=[]):
+    def __init__(self, filepath='', context=None, imported=[], warnings=None):
         ast.NodeVisitor.__init__(self)
         self._filepath = filepath
-        self._warnings = []
+        self._warnings = Warnings(filepath) if warnings is None else warnings
         self._context = context if context is not None else Context()
         self._imported = imported
         self._annotations = []
@@ -45,20 +45,10 @@ class ScopeVisitor(ast.NodeVisitor):
         self._context.get_top_scope().merge_scope(scope)
 
     def warn(self, category, node, details=None):
-        warning = NodeWarning(self._filepath, category, node, details)
-        self._warnings.append(warning)
-
-    def expr_type(self, node):
-        return expression_type(node, self.context())
+        self._warnings.warn(node, category, details)
 
     def evaluate(self, node):
         return static_evaluate(node, self.context())
-
-    def consistent_types(self, check_func, root_node, nodes):
-        types = [self.expr_type(node) for node in nodes]
-        if not check_func(types):
-            details = ', '.join([str(x) for x in types])
-            self.warn('inconsistent-types', root_node, details)
 
     def apply_constraints(self, node, required_type=Unknown()):
         constraints = find_constraints(node, required_type, self.context())
@@ -69,37 +59,13 @@ class ScopeVisitor(ast.NodeVisitor):
                 if new_type is None:
                     self.warn('type-error', node, name)
 
-    def check_type(self, node, type_):
-        self.apply_constraints(node, type_)
-        expr_type = self.expr_type(node)
-        if not type_subset(expr_type, type_):
-            details = '{0} vs {1}'.format(expr_type, type_)
+    def check_type(self, node, expected_type=Unknown()):
+        computed_type = visit_expression(node, expected_type, self.context(),
+                                       self._warnings)
+        if not type_subset(computed_type, expected_type):
+            details = '{0} vs {1}'.format(computed_type, expected_type)
             self.warn('type-error', node, details)
-
-    def check_type_pattern(self, node, types, patterns):
-        if not any(all(type_subset(x, y) for x, y in zip(types, pattern))
-               for pattern in patterns):
-            got = ', '.join([str(x) for x in types])
-            fmt = lambda s: '(' + ', '.join(str(x) for x in sorted(s)) + ')'
-            options = ' or '.join([fmt(x) for x in patterns])
-            details = '[{0}] vs {1}'.format(got, options)
-            self.warn('type-error', node, details)
-
-    def check_return(self, node, is_yield=False):
-        value_type = self.expr_type(node.value)
-        return_type = List(value_type) if is_yield else value_type
-        static_value = self.evaluate(node.value)
-        previous_type = self._context.get_type()
-        if previous_type is None:
-            self._context.set_return(Symbol(
-                'return', return_type, static_value))
-            return
-        new_type = unify_types([previous_type, return_type])
-        if new_type == Unknown():
-            details = '{0} -> {1}'.format(previous_type, return_type)
-            self.warn('multiple-return-types', node, details)
-        else:
-            self._context.set_return(Symbol('return', new_type, static_value))
+        return computed_type
 
     def check_assign(self, node, target, value, generator=False):
         assignments = assign(target, value, self._context, generator=generator)
@@ -135,13 +101,11 @@ class ScopeVisitor(ast.NodeVisitor):
         self._context.add(Symbol(node.name, class_type, UnknownValue()))
 
     def visit_FunctionDef(self, node):
-        visitor = ScopeVisitor(self._filepath, self.context())
+        visitor = ScopeVisitor(self._filepath, self.context(),
+                               warnings=self._warnings)
         function_type, warnings, annotations = construct_function_type(
         node, visitor)
         self._context.add(Symbol(node.name, function_type, UnknownValue()))
-
-        self._annotations.extend(annotations)
-        self._warnings.extend(warnings)
 
         # now check that all the types are consistent between
         # the default types, annotated types, and constrained types
@@ -153,27 +117,38 @@ class ScopeVisitor(ast.NodeVisitor):
                     default_type != annotated_type):
                 self.warn('default-argument-type-error', node, name)
 
+    def check_return(self, node, is_yield=False):
+        value_type = self.check_type(node.value, Unknown())
+        return_type = List(value_type) if is_yield else value_type
+        static_value = self.evaluate(node.value)
+        previous_type = self._context.get_type()
+        if previous_type is None:
+            self._context.set_return(Symbol(
+                'return', return_type, static_value))
+            return
+        new_type = unify_types([previous_type, return_type])
+        if new_type == Unknown():
+            details = '{0} -> {1}'.format(previous_type, return_type)
+            self.warn('multiple-return-types', node, details)
+        else:
+            self._context.set_return(Symbol('return', new_type, static_value))
+
     def visit_Return(self, node):
-        self.apply_constraints(node.value)
+        self.check_type(node.value, Unknown())
         self.check_return(node)
+        self.generic_visit(node)
+
+    def visit_Yield(self, node):    # not sure why python makes yield an expr
+        self.check_return(node, is_yield=True)
         self.generic_visit(node)
 
     def visit_Assign(self, node):
         for target in node.targets:
             self.check_assign(node, target, node.value)
-        types = map(self.expr_type, node.targets + [node.value])
-        intersection = reduce(type_intersection, types)
-        self.apply_constraints(node.value, intersection)
-        for target in node.targets:
-            self.apply_constraints(target, intersection)
         self.generic_visit(node)
 
     def visit_AugAssign(self, node):
         self.check_assign(node, node.target, node.value)
-        types = map(self.expr_type, [node.target, node.value])
-        intersection = type_intersection(*types)
-        self.apply_constraints(node.target, intersection)
-        self.apply_constraints(node.value, intersection)
         self.generic_visit(node)
 
     def visit_Delete(self, node):
@@ -236,14 +211,6 @@ class ScopeVisitor(ast.NodeVisitor):
         self.check_type(node.test, Bool())
         self.generic_visit(node)
 
-    def visit_Expr(self, node):
-        self.check_type(node.value, Unknown())    # trigger find_constraints
-
-    def visit_IfExp(self, node):
-        self.check_type(node.test, Bool())
-        self.consistent_types(unifiable_types, node, [node.body, node.orelse])
-        self.generic_visit(node)
-
     def visit_For(self, node):
         # Python doesn't create a scope for "for", but we will
         # treat it as if it did because it should
@@ -259,94 +226,5 @@ class ScopeVisitor(ast.NodeVisitor):
         self.generic_visit(node)
         self.end_scope()
 
-    def type_error(self, node, label, got, expected):
-        template = '{0} expected type {1} but got {2}'
-        expected_str = [str(x) for x in expected]
-        details = template.format(label, ' or '.join(expected_str), str(got))
-        self.warn('type-error', node, details)
-
-    def check_argument_type(self, node, label, got, expected):
-        assert isinstance(expected, list)
-        if Unknown() not in expected and got not in expected + [NoneType()]:
-            self.type_error(node, 'Argument ' + str(label), got, expected)
-
-    def visit_Call(self, node):
-        func_type = expression_type(node.func, self._context)
-        if isinstance(func_type, Unknown):
-            return self.warn('undefined-function', node)
-        if not isinstance(func_type, (Function, Class)):
-            return self.warn('not-a-function', node)
-
-        argtypes, kwargtypes = call_argtypes(node, self.context())
-        # make sure all required arguments are specified
-        minargs = func_type.arguments.min_count
-        required_kwargs = func_type.arguments.names[len(argtypes):minargs]
-        missing = [name for name in required_kwargs if name not in kwargtypes]
-        for missing_argument in missing:
-            self.warn('missing-argument', node, missing_argument)
-        if func_type.arguments.vararg_name is None:
-            if len(argtypes) > len(func_type.arguments.types):
-                self.warn('too-many-arguments', node)
-        for i, argtype in enumerate(argtypes[:len(func_type.arguments.types)]):
-            deftype = func_type.arguments.types[i]
-            self.check_argument_type(node, i + 1, argtype, [deftype])
-        for name, kwargtype in kwargtypes.items():
-            if name == '*args':
-                if not isinstance(kwargtype, (Tuple, List)):
-                    self.warn('invlaid-vararg-type', node)
-            elif name == '**kwargs':
-                if not isinstance(kwargtype, Dict):
-                    self.warn('invalid-kwarg-type', node)
-            else:
-                deftype = func_type.arguments.get_dict().get(name)
-                if deftype is None:
-                    self.warn('extra-keyword', node, name)
-                else:
-                    self.check_argument_type(node, name, kwargtype, [deftype])
-
-        self.generic_visit(node)
-
-    def visit_Yield(self, node):
-        self.check_return(node, is_yield=True)
-        self.generic_visit(node)
-
-    def visit_Name(self, node):
-        the_type = self._context.get_type(node.id)
-        if the_type is None:
-            self.warn('undefined', node)
-        if not isinstance(the_type, Unknown):
-            label = str(the_type) if the_type else None
-            annotation = (self._filepath, node.lineno, node.col_offset,
-                          node.id, label)
-            self._annotations.append(annotation)
-
-    def visit_Compare(self, node):
-        if any(get_token(op) in ['In', 'NotIn'] for op in node.ops):
-            if len(node.ops) > 1 or len(node.comparators) > 1:
-                self.warn('in-operator-chaining', node)
-            else:
-                rhs_type = self.expr_type(node.comparators[0])
-                if isinstance(rhs_type, List):
-                    self.consistent_types(comparable_types, node,
-                                          [node.left, rhs_type.item_type])
-                elif isinstance(rhs_type, Dict):
-                    self.consistent_types(comparable_types, node,
-                                          [node.left, rhs_type.key_type])
-                elif not isinstance(rhs_type, Unknown):
-                    self.warn('in-operator-argument-not-list-or-dict', node)
-        elif any(get_token(op) in ['Is', 'IsNot'] for op in node.ops):
-            if len(node.ops) > 1 or len(node.comparators) > 1:
-                self.warn('is-operator-chaining', node)
-            else:
-                rhs = node.comparators[0]
-                lhs_type = self.expr_type(node.left)
-                rhs_type = self.expr_type(rhs)
-                if not (isinstance(lhs_type, Maybe)
-                        and isinstance(rhs_type, NoneType)):
-                    self.consistent_types(comparable_types, node,
-                                          [node.left, rhs])
-        else:
-            self.consistent_types(comparable_types, node,
-                                  [node.left] + node.comparators)
-        self.generic_visit(node)
-
+    def visit_Expr(self, node):
+        self.check_type(node.value, Unknown())

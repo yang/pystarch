@@ -1,7 +1,6 @@
 import expr
 from context import Symbol, Scope
 from type_objects import List, Dict, Unknown, Function, NoneType, Instance
-from constraints import find_constraints
 from util import type_intersection
 
 

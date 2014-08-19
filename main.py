@@ -85,7 +85,7 @@ def import_module(name, current_filepath, imported):
         return Instance('object', Scope()), filepath, is_package
     else:
         imported.append(filepath)
-        scope, _, _ = main.analyze(source, filepath, imported=imported)
+        scope, _, _ = analyze(source, filepath, imported=imported)
         module = Instance('object', scope)
         with open(cache_filepath, 'wb') as cache_file:
             pickle.dump(module, cache_file, pickle.HIGHEST_PROTOCOL)
@@ -183,7 +183,7 @@ def analyze(source, filepath=None, context=None, imported=[]):
 
 def analysis(source, filepath=None):
     scope, warnings, _ = analyze(source, filepath)
-    warning_output = ''.join([str(warning) + '\n' for warning in warnings])
+    warning_output = str(warnings)
     scope_output = str(scope)
     separator = '\n' if warning_output and scope_output else ''
     return scope_output + separator + warning_output
