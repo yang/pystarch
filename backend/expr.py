@@ -31,10 +31,6 @@ def check_argument_type(node, label, got, expected, warnings):
     if Unknown() not in expected and got not in expected + [NoneType()]:
         type_error(node, 'Argument ' + str(label), got, expected, warnings)
 
-def visit_Yield(self, node):
-    self.check_return(node, is_yield=True)
-    self.generic_visit(node)
-
 
 # context is the context at call-time, not definition-time
 def make_argument_scope(call_node, arguments, context):
@@ -53,15 +49,16 @@ def make_argument_scope(call_node, arguments, context):
     return scope
 
 
-def assign_generators(generators, context):
+def assign_generators(generators, context, warnings):
     for generator in generators:
-        assign(generator.target, generator.iter, context, generator=True)
+        assign(generator.target, generator.iter, context,
+               warnings, generator=True)
 
 
 def comprehension_type(element, generators, expected_element_type,
                        context, warnings):
     context.begin_scope()
-    assign_generators(generators, context)
+    assign_generators(generators, context, warnings)
     element_type = visit_expression(element, expected_element_type,
                                    context, warnings)
     context.end_scope()
@@ -220,7 +217,7 @@ def _visit_expression(node, expected_type, context, warnings):
                                Dict(left_probe, Unknown()))
             recur(node.comparators[0], union_type)
             if isinstance(right_probe, (List, Set)):
-                recur(node.left, right_probe.item_type)
+                result = recur(node.left, right_probe.item_type)
             if isinstance(right_probe, Dict):
                 recur(node.left, right_probe.key_type)
         return Bool()

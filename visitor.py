@@ -59,7 +59,8 @@ class ScopeVisitor(ast.NodeVisitor):
         return computed_type
 
     def check_assign(self, node, target, value, generator=False):
-        assignments = assign(target, value, self._context, generator=generator)
+        assignments = assign(target, value, self._context,
+                             self._warnings, generator=generator)
         for name, old_symbol, new_symbol in assignments:
             if old_symbol is not None:
                 self.warn('reassignment', node, name)

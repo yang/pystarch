@@ -30,8 +30,8 @@ def assign_single_target(target, assigned_type, static_value, context):
 
 # returns a list of assignments that were made [(name, old_symbol, new_symbol)]
 # so that the validator can produce warnings if necessary
-def assign(target, value, context, generator=False):
-    value_type = expr.expression_type(value, context)
+def assign(target, value, context, warnings, generator=False):
+    value_type = expr.visit_expression(value, Unknown(), context, warnings)
     static_value = static_evaluate(value, context)
     if generator:
         if isinstance(value_type, (List, Set)):
