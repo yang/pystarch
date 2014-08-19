@@ -43,12 +43,19 @@ def assign_generators(generators, context):
         assign(generator.target, generator.iter, context, generator=True)
 
 
-def comprehension_type(element, generators, context):
+def comprehension_type(element, generators, expected_element_type,
+                       context, warnings):
     context.begin_scope()
     assign_generators(generators, context)
-    element_type = expression_type(element, context)
+    element_type = expression_type(element, expected_element_type,
+                                   context, warnings)
     context.end_scope()
     return element_type
+
+
+class NullWarnings:
+    def warn(self, node, warning):
+        pass
 
 
 # Note: "True" and "False" evalute to Bool because they are symbol
@@ -58,90 +65,173 @@ def comprehension_type(element, generators, context):
 # Note that this does not mean that errors will always return Unknown, for
 # example, 2 / 'a' will still return Num because the division operator
 # must always return Num. Similarly, "[1,2,3] + Unknown" will return List(Num)
-def expression_type(node, context):
-    """
-    This function determines the type of an expression, but does
-    not do any type validation.
-    """
-    recur = partial(expression_type, context=context)
+
+def expression_type(node, expected_type, context, warnings=NullWarnings()):
+    result_type = _expression_type(node, expected_type, context, warnings)
+    if result_type != expected_type:
+        warnings.warn(node, 'type-error')
+    return result_type
+
+
+def _expression_type(node, expected_type, context, warnings):
+    recur = partial(expression_type, context=context, warnings=warnings)
+    probe = partial(_expression_type, context=context, warnings=warnings)
+    comp = partial(comprehension_type, context=context, warnings=warnings)
+
     token = get_token(node)
     if token == 'BoolOp':
+        for expr in node.values:
+            recur(expr, Bool())
         return Bool()   # more restrictive than Python
     if token == 'BinOp':
-        types = [recur(node.left), recur(node.right)]
         operator = get_token(node.op)
-        if operator == 'Mult':
-            types_set = set(types)
-            if types_set == {Num()}:
+        if operator == 'Add':
+            union_type = Union(Num(), Str(), List(Unknown))
+            left_probe = probe(node.left, union_type)
+            right_probe = probe(node.right, union_type)
+            intersection = type_intersection(left_probe, right_probe)
+            result_type = type_intersection(intersection, union_type)
+            recur(node.left, result_type or union_type)
+            recur(node.right, result_type or union_type)
+            return result_type if result_type else Unknown()
+        elif operator == 'Mult':
+            union_type = Union(Num(), Str())
+            left_probe = probe(node.left, union_type)
+            right_probe = probe(node.right, union_type)
+            if isinstance(left_probe, Str):
+                recur(node.left, Str())
+                recur(node.right, Num())
+                return Str()
+            if isinstance(right_probe, Str):
+                recur(node.left, Num())
+                recur(node.right, Str())
+                return Str()
+            if isinstance(left_probe, Num) and isinstance(right_probe, Num):
+                recur(node.left, Num())
+                recur(node.right, Num())
                 return Num()
-            elif types_set == {Num(), Str()}:
-                return Str()
-            elif types_set == {Str(), Unknown()}:
-                return Str()
-            else:
-                return Unknown()
-        elif operator == 'Add':
-            if all(isinstance(x, Tuple) for x in types):
-                item_types = types[0].item_types + types[1].item_types
-                return Tuple(item_types)
-            else:
-                operand_type = unique_type(types)
-                if isinstance(operand_type, (Num, Str, List)):
-                    return operand_type
-                else:
-                    return Unknown()
+            recur(node.left, union_type)
+            recur(node.right, union_type)
+            return union_type
         elif operator == 'Mod':
-            if isinstance(recur(node.left), Str):
+            union_type = Union(Num(), Str())
+            left_probe = probe(node.left, union_type)
+            right_probe = probe(node.right, union_type)
+            if isinstance(left_probe, Str) or isinstance(right_probe, Str):
+                recur(node.left, Str())
+                recur(node.right, Str())
                 return Str()
-            else:
+            if isinstance(left_probe, Num) or isinstance(right_probe, Num):
+                recur(node.left, Num())
+                recur(node.right, Num())
                 return Num()
+            recur(node.left, union_type)
+            recur(node.right, union_type)
+            return union_type
         else:
+            recur(node.left, Num())
+            recur(node.right, Num())
             return Num()
     if token == 'UnaryOp':
-        return Bool() if get_token(node.op) == 'Not' else Num()
+        if get_token(node.op) == 'Not':
+            recur(node.operand, Bool())
+            return Bool()
+        else:
+            recur(node.operand, Num())
+            return Num()
     if token == 'Lambda':
-        return Function(Arguments(node.args, context), recur(node.body))
+        subtype = (expected_type.return_type
+                   if isinstance(expected_type, Function) else Unknown())
+        return_type = recur(node.body, subtype)
+        return Function(Arguments(node.args, context), return_type)
     if token == 'IfExp':
-        return unify_types([recur(node.body), recur(node.orelse)])
+        recur(node.test, Bool())
+        types = [recur(node.body, expected_type),
+                 recur(node.orlese, expected_type)]
+        return unify_types(types)
     if token == 'Dict':
-        key_type = unify_types([recur(key) for key in node.keys])
-        value_type = unify_types([recur(value) for value in node.values])
+        key_type = unify_types([recur(key, Unknown()) for key in node.keys])
+        value_type = unify_types([recur(value, Unknown())
+                                  for value in node.values])
         return Dict(key_type, value_type)
     if token == 'Set':
-        return Set(unify_types([recur(elt) for elt in node.elts]))
+        subtype = (expected_type.item_type if isinstance(expected_type, Set)
+                   else Unknown())
+        return Set(unify_types([recur(elt, Unknown()) for elt in node.elts]))
     if token == 'ListComp':
-        return List(comprehension_type(node.elt, node.generators, context))
+        subtype = (expected_type.item_type if isinstance(expected_type, List)
+                   else Unknown())
+        return List(comp(node.elt, node.generators, subtype))
     if token == 'SetComp':
-        return Set(comprehension_type(node.elt, node.generators, context))
+        subtype = (expected_type.item_type if isinstance(expected_type, Set)
+                   else Unknown())
+        return Set(comp(node.elt, node.generators, subtype))
     if token == 'DictComp':
-        key_type = comprehension_type(node.key, node.generators, context)
-        value_type = comprehension_type(node.value, node.generators, context)
+        expected_key_type = (expected_type.key_type
+                             if isinstance(expected_type, Dict)
+                             else Unknown())
+        expected_value_type = (expected_type.value_type
+                             if isinstance(expected_type, Dict)
+                             else Unknown())
+        key_type = comp(node.key, node.generators, expected_key_type)
+        value_type = comp(node.value, node.generators, expected_value_type)
         return Dict(key_type, value_type)
     if token == 'GeneratorExp':
-        return List(comprehension_type(node.elt, node.generators, context))
+        subtype = (expected_type.item_type if isinstance(expected_type, List)
+                   else Unknown())
+        return List(comp(node.elt, node.generators, subtype))
     if token == 'Yield':
-        return List(recur(node.value))
+        return List(recur(node.value, Unkown()))
     if token == 'Compare':
+        operator = get_token(node.ops[0])
+        if operator in ['Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE']:
+            # all operands are constrained to have the same type
+            # as their intersection
+            exprs = [node.left] + node.comparators
+            types = [probe(e, Unknown()) for e in exprs]
+            intersection = reduce(type_intersection, types)
+            for expr in exprs:
+                recur(expr, intersection)
+        if operator in ['Is', 'IsNot']:
+            recur(node.comparators[0], NoneType())
+        if operator in ['In', 'NotIn']:
+            # constrain right to list/set of left, and left to instance of right
+            left = probe(node.left, Unknown())
+            right = probe(node.comparators[0], Unknown())
+            recur(node.comparators[0], Union(List(left), Set(left)))
+            if isinstance(left, (List, Set)):
+                recur(node.left, node.comparators[0].item_type)
         return Bool()
     if token == 'Call':
-        function_type = recur(node.func)
-        if isinstance(function_type, (Class, Function)):
-            return function_type.return_type
-        else:
+        function_type = recur(node.func, Unknown())
+        if not isinstance(function_type, (Class, Function)):
+            warnings.warn(node, 'not-a-function')
             return Unknown()
-    if token == 'Repr':    # TODO: is Repr a Str?
+        arg_types = func_type.arguments.types
+        # TODO: handle keyword arguments
+        for arg_expr, type_ in zip(node.args, arg_types):
+            recur(arg_expr, type_)
+        if node.starargs is not None:
+            recur(node.starargs, List(Unknown()))
+        if node.kwargs is not None:
+            recur(node.kwargs, Dict(Unknown(), Unknown()))
+        return function_type.return_type
+    if token == 'Repr':
         return Str()
     if token == 'Num':
         return Num()
     if token == 'Str':
         return Str()
     if token == 'Attribute':
-        value_type = recur(node.value)
+        value_type = recur(node.value, Unknown())
         if not isinstance(value_type, Instance):
+            warnings.warn(node, 'not-an-instance')
             return Unknown()
         return value_type.attributes.get_type(node.attr) or Unknown()
     if token == 'Subscript':
-        value_type = recur(node.value)
+        union_type = Union(List(Unknown(), Dict(Unknown(), Unknown())),
+                           BaseTuple())
+        value_type = recur(node.value, union_type)
         if get_token(node.slice) == 'Index':
             if isinstance(value_type, Tuple):
                 index = static_evaluate(node.slice.value, context)
@@ -161,13 +251,16 @@ def expression_type(node, context):
         else:
             return value_type
     if token == 'Name':
+        context.add_constraint(node.id, expected_type)
         return context.get_type(node.id) or Unknown()
     if token == 'List':
-        return List(unify_types([recur(elt) for elt in node.elts]))
+        subtype = (expected_type.item_type if isinstance(expected_type, List)
+                   else Unknown())
+        return List(unify_types([recur(elt, subtype) for elt in node.elts]))
     if token == 'Tuple':
-        return Tuple([recur(element) for element in node.elts])
-    if token == 'NoneType':
-        return NoneType()
-    if token == 'Unknown':
-        return Unknown()
+        if (isinstance(expected_type, Tuple)
+                and len(node.elts) == len(expected_type.item_types)):
+            return Tuple([recur(element, type_) for element, type_ in
+                          zip(node.elts, expected_type.item_types))
+        return Tuple([recur(element, Unknown()) for element in node.elts])
     raise Exception('expression_type does not recognize ' + token)

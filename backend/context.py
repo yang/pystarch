@@ -36,6 +36,7 @@ class Symbol(object):
         self._name = name
         self._type = type_
         self._value = value if type_ != NoneType() else None
+        self._assign_expression = None
 
     def get_name(self):
         return self._name
@@ -46,9 +47,13 @@ class Symbol(object):
     def get_value(self):
         return self._value
 
-    def add_constraint(self, type_):
+    def add_constraint(self, type_, recur):
         new_type = type_intersection(self._type, type_)
         if new_type is not None:
+            # problem: do we have to maintain the definition context
+            # for every symbol? that's way too much memory
+            if self._assign_expression is not None:
+                recur(self._assign_expression, new_type)
             self._type = new_type
             return new_type
         else:

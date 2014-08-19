@@ -53,3 +53,8 @@ constraints or just keep the one-way processing, but loop over the same block
 until the constraints remain unchanged. I think the looping method is simpler.
 
 
+* Actually, I think we may have to do the network propagation method because
+it would be wierd if on the second loop "c" already has a type even though
+it is just being assigned for the first time. Then we don't know if this is
+a re-assignment, and we can't really tell if "a+b" should have the same type
+as this preset for "c".

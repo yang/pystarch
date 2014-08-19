@@ -5,6 +5,10 @@ recursive function evaluator that does error-checking for expressions
 and finds constraints on the variable names. Should we evaluate the
 expression type in the same function as we find constraints?
 
+Maybe each symbol can contain a list of "linked expressions" where it is
+assumed that the linked expressions have the same type, so if we constrain
+an intermediate variable, it will automatically recursively constrain all the
+linked expressions. This might enter an infinite loop though.
 
 the logic in find_constraints is redundant with the information contained
 in the check_type calls in main.py. We should be able to just use check_type
