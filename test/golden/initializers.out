@@ -1,11 +1,6 @@
 x01 List(Num) [1, 2, 3]
-x02 List(Unknown) [1, 'a', 2]
+x02 List(Union(Num,Str)) [1, 'a', 2]
 x03 Set(Num) set([1, 2, 3])
-x04 Set(Unknown) set(['a', 1, 2])
+x04 Set(Union(Num,Str)) set(['a', 1, 2])
 x05 Dict(Str,Num) {'a': 1, 'b': 2}
-x06 Dict(Unknown,Unknown) {'a': 1, 2: 'b'}
-
-testcases/initializers.py:2 inconsistent-types "List" (Num, Str, Num)
-testcases/initializers.py:4 inconsistent-types "Set" (Num, Str, Num)
-testcases/initializers.py:6 inconsistent-types "Dict" (Str, Num)
-testcases/initializers.py:6 inconsistent-types "Dict" (Num, Str)
+x06 Dict(Union(Num,Str),Union(Num,Str)) {'a': 1, 2: 'b'}
