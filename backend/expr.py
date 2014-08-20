@@ -107,8 +107,17 @@ def _visit_expression(node, expected_type, context, warnings):
     if token == 'BinOp':
         operator = get_token(node.op)
         if operator == 'Add':
+            left_probe = probe(node.left)
+            right_probe = probe(node.right)
+            if isinstance(left_probe, Tuple) or isinstance(right_probe, Tuple):
+                left = recur(node.left, BaseTuple())
+                right = recur(node.right, BaseTuple())
+                if isinstance(left, Tuple) and isinstance(right, Tuple):
+                    return Tuple(left.item_types + right.item_types)
+                else:
+                    return Unknown()
             union_type = Union(Num(), Str(), List(Unknown()))
-            intersect = type_intersection(probe(node.left), probe(node.right))
+            intersect = type_intersection(left_probe, right_probe)
             result_type = type_intersection(intersect, union_type)
             recur(node.left, result_type or union_type)
             recur(node.right, result_type or union_type)
@@ -133,19 +142,22 @@ def _visit_expression(node, expected_type, context, warnings):
             recur(node.right, union_type)
             return union_type
         elif operator == 'Mod':
-            union_type = Union(Num(), Str())
+            # num % num OR str % unknown
             left_probe = probe(node.left)
             right_probe = probe(node.right)
-            if isinstance(left_probe, Str) or isinstance(right_probe, Str):
+            if (type_subset(Str(), left_probe) and
+                    not type_subset(Num(), left_probe)):
                 recur(node.left, Str())
-                recur(node.right, Str())
+                recur(node.right, Unknown())
                 return Str()
-            if isinstance(left_probe, Num) or isinstance(right_probe, Num):
+            if (type_subset(Num(), left_probe) and
+                    not type_subset(Str(), left_probe)):
                 recur(node.left, Num())
                 recur(node.right, Num())
                 return Num()
+            union_type = Union(Num(), Str())
             recur(node.left, union_type)
-            recur(node.right, union_type)
+            recur(node.right, Unknown())
             return union_type
         else:
             recur(node.left, Num())

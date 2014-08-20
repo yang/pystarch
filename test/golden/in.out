@@ -5,7 +5,9 @@ x04 Bool
 x05 Bool
 x06 Bool
 
-testcases/in.py:2 inconsistent-types "In" (Str, Num)
-testcases/in.py:4 in-operator-argument-not-list-or-dict "In"
-testcases/in.py:5 in-operator-chaining "In In"
-testcases/in.py:6 in-operator-argument-not-list-or-dict "In"
+testcases/in.py:2 type-error "List" (List(Num) vs Union(List(Str),Set(Str),Dict(Str,Unknown)))
+testcases/in.py:2 type-error "Str" (Str vs Num)
+testcases/in.py:4 type-error "Tuple" (Tuple(Num,Num,Num) vs Union(List(Num),Set(Num),Dict(Num,Unknown)))
+testcases/in.py:5 comparison-operator-chaining "In In"
+testcases/in.py:5 type-error "Num" (Num vs Union(List(Num),Set(Num),Dict(Num,Unknown)))
+testcases/in.py:6 type-error "Num" (Num vs Union(List(Num),Set(Num),Dict(Num,Unknown)))
