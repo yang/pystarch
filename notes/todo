@@ -1,75 +1,19 @@
 
-When clonining visitor, have to clone context too
-
-The ScopeVisitor is responsible for every node that is not part of an
-expression. Once you reach an expression in the tree, we branch into a
-recursive function evaluator that does error-checking for expressions
-and finds constraints on the variable names. Should we evaluate the
-expression type in the same function as we find constraints?
-
-Maybe each symbol can contain a list of "linked expressions" where it is
-assumed that the linked expressions have the same type, so if we constrain
-an intermediate variable, it will automatically recursively constrain all the
-linked expressions. This might enter an infinite loop though.
-
-the logic in find_constraints is redundant with the information contained
-in the check_type calls in main.py. We should be able to just use check_type
-to constrain the types of symbols. The problem is that I don't know how to
-propagate the required type down through the whole expression.
-- Perhaps we can remove all the check_type logic for expressions from
-  Visitor and just rely on the find_constraints function to do type checking
-  within expressions.
-
-Another idea is to make a ModuleVisitor and a FunctionVisitor
-where ModuleVisitor just supports imports, function defs, and classdefs,
-and assignments, whereas a functionvisitor supports things like for, while,
-if, etc. Though there are things like "if __name__ == '__main__'"...
-But it would be nice to separate out the import logic at least. We could
-make ModuleVisitor a superclass of functionvisitor, just to pull out the
-import garbage.
-
-Make two separate Visitor classes. One for computing constraints and
-keeping track of the context, and one just for checking for warnings.
-They can be dynamically merged and executed in parallel.
-
-Can create a chain of visitors. The higher visitors override the visit
-function and call the base vistor handlers first.
-
-* Actually it's not clear that splitting into 2 visitor will really help
-much because we usually have to check for error cases anyways in the base
-visitor
-
-
-Store computed type of every function call, and every function argument,
-so each function has a list for it's type and lists for each argument.
-
-We probably have to use union types for more power.
-
-When evaluating a function, we should be able to add constraints to any
-variable and detect if the contraints are violated. For example:
-
-def f(a, b):
-    return a + b
-
-We should be able to tag 'a' and 'b' as being either number or string since
-these are the only types that can work here. "Usage constraints" can be
-calculated before ever calling the function.
-
-
 High Priority
 =============
-Call class methods properly (set 'self' parameter to instance)
+When clonining visitor, have to clone context too
 Negative slice indices, slice step size (for tuple type evaluation)
 Make an HTML debugging display just like pysonar
-- Need to evaluate function defs somehow
 EqualityMixin: other.__class__ == self.__class__
 Unwrap maybe in comprehensions with "if x is not None" conditions
 Use a code coverage tool to make sure everything is covered by tests
 Support calling functions that are defined later (needed for mutual recursion)
-Check that __init__ takes at least one argument
-
-Imports
-=======
+Improve function call argument error checking
+Improve constraint checking (back-propagation, see 'maybe' test case)
+- Maybe each symbol can contain a list of "linked expressions" where it is
+assumed that the linked expressions have the same type, so if we constrain
+an intermediate variable, it will automatically recursively constrain all the
+linked expressions. This might enter an infinite loop though.
 from a.b import module
 Handle circular imports properly
 

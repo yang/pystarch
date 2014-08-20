@@ -224,3 +224,9 @@ class ScopeVisitor(ast.NodeVisitor):
 
     def visit_Expr(self, node):
         self.check_type(node.value, Unknown())
+
+    def visit_Import(self, node):
+        self.warn('non-global-import', node)
+
+    def visit_ImportFrom(self, node):
+        self.warn('non-global-import', node)
