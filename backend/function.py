@@ -135,6 +135,7 @@ class FunctionEvaluator(object):
         self._body = body
         self._visitor = visitor
         self._init = init
+        self._recursion_block = False
 
     def _evaluate(self, argument_scope):
         visitor = self._visitor
@@ -148,9 +149,13 @@ class FunctionEvaluator(object):
         return visitor.end_scope()
 
     def evaluate(self, argument_scope):
+        if self._recursion_block:
+            return Unknown(), UnknownValue()
+        self._recursion_block = True
         if self._body is None:
             return NoneType(), None
         scope = self._evaluate(argument_scope)
+        self._recursion_block = False
         if self._init:
             return_type = Instance('Class', Scope()) # TODO
         else:
