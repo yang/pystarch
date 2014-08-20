@@ -86,6 +86,10 @@ class Scope(object):
         symbol = self.get(name) if name else self.get_return()
         return symbol.get_type() if symbol else None
 
+    def get_value(self, name=None):
+        symbol = self.get(name) if name else self.get_return()
+        return symbol.get_value() if symbol else None
+
     def add(self, symbol):
         assert isinstance(symbol, Symbol)
         self._symbols[symbol.get_name()] = symbol

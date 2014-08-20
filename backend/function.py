@@ -90,8 +90,11 @@ class Arguments(object):
             if name in constraints:
                 self.constrain_type(name, constraints[name])
 
+    def get_signature(self):
+        return zip(self.names, self.types)
+
     def get_dict(self):
-        return dict(zip(self.names, self.types))
+        return dict(self.get_signature())
 
     def _get_annotated_types(self, decorator_list, context):
         types_decorator = [d for d in decorator_list
@@ -103,7 +106,8 @@ class Arguments(object):
         return argtypes + [kwargtypes.get(name, Unknown())
             for name in self.names[len(argtypes):]]
 
-    def load_scope(self, scope):
+    def load_scope(self, scope, call_node=None):
+        # TODO: process call_node arguments
         for name, argtype in self.get_dict().items():
             scope.add(Symbol(name, argtype))
         if self.vararg_name:
@@ -120,17 +124,44 @@ class Arguments(object):
             in zip(self.names, self.types)) + vararg + kwarg)
 
 
-def construct_function_type(functiondef_node, visitor):
-    visitor.context().clear_constraints()
-    arguments = Arguments(functiondef_node.args, visitor.context())
-    visitor.begin_scope()
-    arguments.load_scope(visitor.scope())
-    for stmt in functiondef_node.body:
-        visitor.visit(stmt)
-    scope = visitor.end_scope()
-    return_type = scope.get_type() or NoneType()
-    arguments.constrain_types(visitor.context().get_constraints())
+# we only generate warnings on the first pass through a function definition
+# the FunctionEvaluator is only to evaluate the type and static value of
+# function calls
+class FunctionEvaluator(object):
+    def __init__(self, functiondef_node, visitor):
+        self._name = getattr(functiondef_node, 'name', None)
+        self._arguments = Arguments(functiondef_node.args, visitor.context())
+        self._body = functiondef_node.body
+        self._visitor = visitor
+        visitor.context().clear_constraints()
+        return_type, static_value = self.evaluate()
+        self._arguments.constrain_types(visitor.context().get_constraints())
+        self._return_type = return_type
+        self._static_value = static_value
 
-    if functiondef_node.name == '__init__':
-        return_type = Instance('Class', Scope()) # TODO
-    return Function(arguments, return_type)
+    def get_signature(self):
+        return self._arguments.get_signature(), self._return_type
+
+    def _evaluate(self, call_node=None):
+        visitor = self._visitor
+        visitor.begin_scope()
+        self._arguments.load_scope(visitor.scope(), call_node)
+        for stmt in self._body:
+            visitor.visit(stmt)
+        return visitor.end_scope()
+
+    def evaluate(self, call_node=None):
+        scope = self._evaluate(call_node)
+        if self._name == '__init__':
+            return_type = Instance('Class', Scope()) # TODO
+        else:
+            return_type = scope.get_type() or NoneType()
+        if return_type != NoneType():
+            return_value = scope.get_value() or UnknownValue()
+        else:
+            return_value = None
+        return return_type, return_value
+
+
+def construct_function_type(functiondef_node, visitor):
+    return Function(FunctionEvaluator(functiondef_node, visitor))
