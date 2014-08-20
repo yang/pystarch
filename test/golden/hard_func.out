@@ -1,2 +1,2 @@
 a List(Num)
-f Function(iterable: Unknown)
+f Function(iterable: Unknown -> List(Unknown))

@@ -128,11 +128,7 @@ class ScopeVisitor(ast.NodeVisitor):
                 'return', return_type, static_value))
             return
         new_type = unify_types([previous_type, return_type])
-        if new_type == Unknown():
-            details = '{0} -> {1}'.format(previous_type, return_type)
-            self.warn('multiple-return-types', node, details)
-        else:
-            self._context.set_return(Symbol('return', new_type, static_value))
+        self._context.set_return(Symbol('return', new_type, static_value))
 
     def visit_Return(self, node):
         self.check_return(node)

@@ -1,58 +1,43 @@
-MyClass MyClass
+MyClass MyClass None
 a List(Num) [1, 2, 3]
-another_function Function()
+another_function Function( -> Maybe(Num))
 b Num
 c Num
-func Function()
-func2 Function()
+func Function( -> Union(Str,List(Unknown)))
+func2 Function( -> Num)
 globe Num 1
 instance Instance(MyClass)
-my_function Function(sam: Function(x: Unknown), maxi: Function(obj: Unknown))
-types Function(, args: Tuple, kwargs: Dict)
-v List(Unknown)
+my_function Function(sam: Num, maxi: Unknown -> Num)
+types Function(, args: Tuple, kwargs: Dict -> Function(x: Unknown -> Unknown))
+v Union(Str,List(Unknown))
 w Maybe(Num)
 x Unknown
-y Unknown
+y List(Num)
 z Num
 
-testcases/misc.py:55 reassignment "a = ..." (a)
-testcases/misc.py:55 type-change "a = ..." (a: Num -> List(Num))
-testcases/misc.py:57 reassignment "c = ..." (c)
-testcases/misc.py:58 missing-argument "my_function" (sam)
-testcases/misc.py:58 missing-argument "my_function" (maxi)
 testcases/misc.py:22 reassignment "bob = ..." (bob)
-testcases/misc.py:22 undefined "sam"
 testcases/misc.py:23 reassignment "globe = ..." (globe)
-testcases/misc.py:61 undefined-function ".str"
+testcases/misc.py:28 missing-argument "my_function" (sam)
+testcases/misc.py:28 missing-argument "my_function" (maxi)
+testcases/misc.py:30 type-error "Str" (Str vs Num)
+testcases/misc.py:30 missing-argument "my_function" (sam)
+testcases/misc.py:30 missing-argument "my_function" (maxi)
+testcases/misc.py:30 type-error "my_function" (Num vs Str)
 testcases/misc.py:35 constant-if-condition "If"
 testcases/misc.py:37 reassignment "alice = ..." (alice)
 testcases/misc.py:37 type-change "alice = ..." (alice: Num -> Str)
-testcases/misc.py:38 multiple-return-types "Return" (List(Unknown) -> Str)
-testcases/misc.py:43 inconsistent-types "Eq" (Str, List(Num))
+testcases/misc.py:43 type-error "alice" (Str vs List(Num))
+testcases/misc.py:43 type-error "List" (List(Num) vs Str)
 testcases/misc.py:43 constant-if-condition "If"
-testcases/misc.py:45 inconsistent-types "Is" (Str, NoneType)
 testcases/misc.py:45 constant-if-condition "If"
 testcases/misc.py:47 constant-if-condition "If"
 testcases/misc.py:49 reassignment "alice = ..." (alice)
 testcases/misc.py:50 reassignment "alice = ..." (alice)
 testcases/misc.py:50 type-change "alice = ..." (alice: Str -> Num)
-testcases/misc.py:28 missing-argument "my_function" (sam)
-testcases/misc.py:28 missing-argument "my_function" (maxi)
-testcases/misc.py:19 reassignment "x = ..." (x)
-testcases/misc.py:19 type-change "x = ..." (x: Unknown -> Bool)
-testcases/misc.py:22 reassignment "bob = ..." (bob)
-testcases/misc.py:22 undefined "sam"
-testcases/misc.py:23 reassignment "globe = ..." (globe)
-testcases/misc.py:30 inconsistent-types "Eq" (Str, Num)
-testcases/misc.py:30 missing-argument "my_function" (sam)
-testcases/misc.py:30 missing-argument "my_function" (maxi)
-testcases/misc.py:19 reassignment "x = ..." (x)
-testcases/misc.py:19 type-change "x = ..." (x: Unknown -> Bool)
-testcases/misc.py:22 reassignment "bob = ..." (bob)
-testcases/misc.py:22 undefined "sam"
-testcases/misc.py:23 reassignment "globe = ..." (globe)
-testcases/misc.py:30 constant-if-condition "If"
+testcases/misc.py:55 reassignment "a = ..." (a)
+testcases/misc.py:55 type-change "a = ..." (a: Num -> List(Num))
+testcases/misc.py:57 reassignment "c = ..." (c)
+testcases/misc.py:58 missing-argument "my_function" (sam)
+testcases/misc.py:58 missing-argument "my_function" (maxi)
 testcases/misc.py:68 reassignment "i = ..." (i)
-builtins.py:256 too-many-arguments "file"
-builtins.py:256 type-error "file" (Argument 2 expected type Num but got Str)
-builtins.py:256 undefined "buffering"
+testcases/misc.py:68 type-change "i = ..." (i: Unknown -> Num)

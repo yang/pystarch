@@ -1,0 +1,6 @@
+f Function(a: Union(Num,Str,List(Unknown)), b: Union(Num,Str,List(Unknown)), c: Unknown -> Num)
+g Function(x: Num -> Num)
+h Function(x: Num -> Num)
+j Function(x: Union(List(Unknown),Dict(Unknown,Unknown),BaseTuple) -> Unknown)
+
+testcases/constraint.py:9 type-error "d" (Union(Num,Str,List(Unknown)) vs Num)

@@ -1,5 +1,5 @@
 a Dict(Unknown,Unknown) {}
-f Function()
+f Function( -> Str)
 
 testcases/with.py:6 reassignment "a = ..." (a)
 testcases/with.py:6 type-change "a = ..." (a: Str -> Num)

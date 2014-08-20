@@ -1,4 +1,4 @@
-f Function(a: Unknown, b: Unknown, c: Unknown, d: Num, e: Str, f: NoneType, args: Tuple, kwargs: Dict)
+f Function(a: Unknown, b: Unknown, c: Unknown, d: Num, e: Str, f: NoneType, args: Tuple, kwargs: Dict -> List(Unknown))
 
 testcases/func.py:7 missing-argument "f" (a)
 testcases/func.py:7 missing-argument "f" (b)

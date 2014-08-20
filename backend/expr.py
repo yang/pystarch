@@ -236,11 +236,15 @@ def _visit_expression(node, expected_type, context, warnings):
         if operator in ['Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE']:
             # all operands are constrained to have the same type
             # as their intersection
-            exprs = [node.left] + node.comparators
-            types = [probe(expr) for expr in exprs]
-            intersection = reduce(type_intersection, types)
-            for expr in exprs:
-                recur(expr, intersection)
+            left_probe = probe(node.left)
+            right_probe = probe(node.comparators[0])
+            intersection = type_intersection(left_probe, right_probe)
+            if intersection is None:
+                recur(node.left, right_probe)
+                recur(node.comparators[0], left_probe)
+            else:
+                recur(node.left, intersection)
+                recur(node.comparators[0], intersection)
         if operator in ['Is', 'IsNot']:
             recur(node.left, Maybe(Unknown()))
             recur(node.comparators[0], NoneType())

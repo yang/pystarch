@@ -1,4 +1,4 @@
-f Function(x: Num)
+f Function(x: Num -> Maybe(Num))
 x01 Num 1
 x02 Num 3
 x03 Bool False

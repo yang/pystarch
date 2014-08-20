@@ -29,8 +29,8 @@ class TupleMixin(object):
 
 class CallableMixin(object):
     def __str__(self):
-        return '{0}({1})'.format(self.__class__.__name__,
-            self.signature)
+        return '{0}({1} -> {2})'.format(self.__class__.__name__,
+            self.signature, self.return_type)
 
 
 class Unknown(EqualityMixin, BasicMixin):
