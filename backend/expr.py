@@ -5,7 +5,7 @@ from type_objects import Bool, Num, Str, List, Tuple, Set, BaseTuple, \
 from evaluate import static_evaluate, UnknownValue
 from util import unique_type, unify_types, type_intersection, type_subset
 from assign import assign
-from function import Arguments, call_argtypes
+from function import construct_function_type
 
 
 def get_token(node):
@@ -171,10 +171,7 @@ def _visit_expression(node, expected_type, context, warnings):
             recur(node.operand, Num())
             return Num()
     if token == 'Lambda':
-        subtype = (expected_type.return_type
-                   if isinstance(expected_type, Function) else Unknown())
-        return_type = recur(node.body, subtype)
-        return Function(Arguments(node.args, context), return_type)
+        return construct_function_type(node, LambdaVisitor(context))
     if token == 'IfExp':
         recur(node.test, Bool())
         #check_consistent_types(node, [node.body, node.orelse],
@@ -217,7 +214,7 @@ def _visit_expression(node, expected_type, context, warnings):
                    else Unknown())
         return List(comp(node.elt, node.generators, subtype))
     if token == 'Yield':
-        return List(recur(node.value, Unkown()))
+        return List(recur(node.value, Unknown()))
     if token == 'Compare':
         operator = get_token(node.ops[0])
         if len(node.ops) > 1 or len(node.comparators) > 1:
@@ -251,46 +248,48 @@ def _visit_expression(node, expected_type, context, warnings):
             if not isinstance(function_type, Unknown):
                 warnings.warn(node, 'not-a-function')
             return Unknown()
-        arg_types = function_type.arguments.types
-        # TODO: handle keyword arguments
+        signature = function_type.signature
 
-        argtypes, kwargtypes = call_argtypes(node, context)
         # make sure all required arguments are specified
-        minargs = function_type.arguments.min_count
-        required_kwargs = function_type.arguments.names[len(argtypes):minargs]
-        missing = [name for name in required_kwargs if name not in kwargtypes]
-        for missing_argument in missing:
-            warnings.warn(node, 'missing-argument', missing_argument)
-        if function_type.arguments.vararg_name is None:
-            if len(argtypes) > len(function_type.arguments.types):
+        if node.starargs is None and node.kwargs is None:
+            required = signature.names[len(node.args):signature.min_count]
+            kwarg_names = [keyword.arg for keyword in node.keywords]
+            missing = [name for name in required if name not in kwarg_names]
+            for missing_argument in missing:
+                warnings.warn(node, 'missing-argument', missing_argument)
+
+        # check for too many arguments
+        if signature.vararg_name is None:
+            if len(node.args) + len(node.keywords) > len(signature.types):
                 warnings.warn(node, 'too-many-arguments')
-        defined_argtypes = argtypes[:len(function_type.arguments.types)]
-        for i, argtype in enumerate(defined_argtypes):
-            deftype = function_type.arguments.types[i]
-            check_argument_type(node, i + 1, argtype, [deftype], warnings)
-        for name, kwargtype in kwargtypes.items():
-            if name == '*args':
-                if not isinstance(kwargtype, (Tuple, List)):
-                    warnings.warn(node, 'invlaid-vararg-type')
-            elif name == '**kwargs':
-                if not isinstance(kwargtype, Dict):
-                    warnings.warn(node, 'invalid-kwarg-type')
+
+        argument_scope = Scope()
+        # load positional arguments
+        for i, arg in enumerate(node.args):
+            if i >= len(signature):
+                break
+            arg_type = recur(arg, signature.types[i])
+            value = static_evaluate(arg, context)
+            argument_scope.add(Symbol(signature.names[i], arg_type, value))
+
+        # load keyword arguments
+        for kwarg in node.keywords:
+            # TODO: make sure there is no overlap with positional args
+            expected_type = signature.get_dict().get(kwarg.arg)
+            if expected_type is None:
+                warnings.warn(node, 'extra-keyword', kwarg.arg)
             else:
-                deftype = function_type.arguments.get_dict().get(name)
-                if deftype is None:
-                    warnings.warn(node, 'extra-keyword', name)
-                else:
-                    check_argument_type(node, name, kwargtype, [deftype],
-                                        warnings)
+                arg_type = recur(kwarg.value, expected_type)
+                value = static_evaluate(kwarg.value, context)
+                argument_scope.add(Symbol(kwarg.arg, arg_type, value))
 
-
-        for arg_expr, type_ in zip(node.args, arg_types):
-            recur(arg_expr, type_)
         if node.starargs is not None:
             recur(node.starargs, List(Unknown()))
         if node.kwargs is not None:
             recur(node.kwargs, Dict(Unknown(), Unknown()))
-        return function_type.return_type
+
+        return_type, _ = function_type.evaluator.evaluate(argument_scope)
+        return return_type
     if token == 'Repr':
         return Str()
     if token == 'Num':
@@ -352,6 +351,28 @@ def _visit_expression(node, expected_type, context, warnings):
                           zip(node.elts, expected_type.item_types)])
         return Tuple([recur(element, Unknown()) for element in node.elts])
     raise Exception('visit_expression does not recognize ' + token)
+
+
+class LambdaVisitor(object):
+    def __init__(self, context):
+        self._context = context
+
+    def context(self):
+        return self._context
+
+    def visit(self, expression):
+        result_type = expression_type(expression, self._context)
+        symbol = Symbol('', result_type)
+        self._context.set_return(symbol)
+
+    def begin_scope(self):
+        self._context.begin_scope()
+
+    def end_scope(self):
+        return self._context.end_scope()
+
+    def merge_scope(self, scope):
+        self._context.merge_scope(scope)
 
 
 def expression_type(expr, context):

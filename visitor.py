@@ -1,13 +1,13 @@
 # pylint: disable=invalid-name
 import ast
 from warning import Warnings
-from backend import visit_expression, Arguments, \
+from backend import visit_expression, \
     assign, get_token, assign_generators, \
     unify_types, known_types, ExtendedContext, Scope, Union, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
     maybe_inferences, unifiable_types, Symbol, type_subset, Context, \
-    BaseTuple, construct_function_type
+    BaseTuple, construct_function_type, FunctionSignature, FunctionEvaluator
 
 
 class ScopeVisitor(ast.NodeVisitor):
@@ -42,7 +42,7 @@ class ScopeVisitor(ast.NodeVisitor):
         return self._context.end_scope()
 
     def merge_scope(self, scope):
-        self._context.get_top_scope().merge_scope(scope)
+        self._context.merge_scope(scope)
 
     def warn(self, category, node, details=None):
         self._warnings.warn(node, category, details)
@@ -77,18 +77,21 @@ class ScopeVisitor(ast.NodeVisitor):
         self._class_name = None
         # TODO: handle case of no __init__ function
         if '__init__' in scope:
-            init_arguments = scope.get_type('__init__').arguments
-            arguments = Arguments.copy_without_first_argument(init_arguments)
+            init_signature = scope.get_type('__init__').signature
+            arguments = FunctionSignature.copy_without_first_argument(
+                                            init_signature)
             instance_type = scope.get_type('__init__').return_type
             common = set(scope.names()) & set(instance_type.attributes.names())
             if len(common) > 0:
                 self.warn(node, 'overlapping-class-names', ','.join(common))
             instance_type.attributes.merge(scope)
         else:
-            arguments = Arguments()
+            arguments = FunctionSignature()
             instance_type = Instance(node.name, Scope())
         # TODO: separate class/static methods and attributes from the rest
-        class_type = Class(node.name, arguments, instance_type, Scope())
+        evaluator = FunctionEvaluator(None, self)
+        class_type = Class(node.name, arguments, instance_type, evaluator,
+                           Scope())
         # TODO: save self.x into scope where "self" is 1st param to init
         self._context.add(Symbol(node.name, class_type, UnknownValue()))
 
@@ -100,16 +103,19 @@ class ScopeVisitor(ast.NodeVisitor):
 
         # now check that all the types are consistent between
         # the default types, annotated types, and constrained types
-        arguments = function_type.arguments
-        types = zip(arguments.names, arguments.types,
-            arguments.annotated_types, arguments.default_types)
+        signature = function_type.signature
+        types = zip(signature.names, signature.types,
+            signature.annotated_types, signature.default_types)
         for name, constrained_type, annotated_type, default_type in types:
             if (annotated_type != Unknown() and default_type != Unknown() and
                     default_type != annotated_type):
                 self.warn('default-argument-type-error', node, name)
 
     def check_return(self, node, is_yield=False):
-        value_type = self.check_type(node.value, Unknown())
+        if node.value is None:
+            value_type = NoneType()
+        else:
+            value_type = self.check_type(node.value, Unknown())
         return_type = List(value_type) if is_yield else value_type
         static_value = self.evaluate(node.value)
         previous_type = self._context.get_type()
@@ -125,7 +131,6 @@ class ScopeVisitor(ast.NodeVisitor):
             self._context.set_return(Symbol('return', new_type, static_value))
 
     def visit_Return(self, node):
-        self.check_type(node.value, Unknown())
         self.check_return(node)
         self.generic_visit(node)
 

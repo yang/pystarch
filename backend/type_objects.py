@@ -30,7 +30,7 @@ class TupleMixin(object):
 class CallableMixin(object):
     def __str__(self):
         return '{0}({1})'.format(self.__class__.__name__,
-            self.arguments)
+            self.signature)
 
 
 class Unknown(EqualityMixin, BasicMixin):
@@ -102,8 +102,8 @@ class Dict(EqualityMixin):
 
 
 class Function(EqualityMixin, CallableMixin):
-    def __init__(self, arguments, return_type, evaluator):
-        self.arguments = arguments
+    def __init__(self, signature, return_type, evaluator):
+        self.signature = signature
         self.return_type = return_type
         self.evaluator = evaluator
 
@@ -126,10 +126,11 @@ class Instance(EqualityMixin):
 
 # a Class is a Function that returns an Instance plus static methods/attrs
 class Class(EqualityMixin, CallableMixin):
-    def __init__(self, name, arguments, return_type, attributes):
+    def __init__(self, name, signature, return_type, evaluator, attributes):
         self.name = name
-        self.arguments = arguments
+        self.signature = signature
         self.return_type = return_type
+        self.evaluator = evaluator
         # only contains class methods and class attributes
         self.attributes = attributes
 
@@ -156,7 +157,7 @@ class Union(EqualityMixin):
     def __init__(self, *subtypes):
         assert len(subtypes) > 0
         assert not any(isinstance(x, list) for x in subtypes)
-        self.subtypes = subtypes
+        self.subtypes = list(subtypes)
 
     def example(self):
         return self.subtypes[0].example()

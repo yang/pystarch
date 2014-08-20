@@ -2,6 +2,7 @@ import expr
 from context import Symbol, Scope
 from type_objects import List, Dict, Unknown, Function, NoneType, Instance
 from util import type_intersection
+from evaluate import static_evaluate, UnknownValue
 
 
 def get_token(node):
@@ -25,8 +26,9 @@ def call_argtypes(call_node, context):
     return types, keyword_types
 
 
+
 # "arguments" parameter is node.args for FunctionDef or Lambda
-class Arguments(object):
+class FunctionSignature(object):
     def __init__(self, arguments=None, context=None, decorator_list=[]):
         if arguments is None:
             self.names = []
@@ -90,11 +92,11 @@ class Arguments(object):
             if name in constraints:
                 self.constrain_type(name, constraints[name])
 
-    def get_signature(self):
+    def get_list(self):
         return zip(self.names, self.types)
 
     def get_dict(self):
-        return dict(self.get_signature())
+        return dict(self.get_list())
 
     def _get_annotated_types(self, decorator_list, context):
         types_decorator = [d for d in decorator_list
@@ -106,14 +108,15 @@ class Arguments(object):
         return argtypes + [kwargtypes.get(name, Unknown())
             for name in self.names[len(argtypes):]]
 
-    def load_scope(self, scope, call_node=None):
-        # TODO: process call_node arguments
+    def generic_scope(self):
+        scope = Scope()
         for name, argtype in self.get_dict().items():
             scope.add(Symbol(name, argtype))
         if self.vararg_name:
             scope.add(Symbol(self.vararg_name, List(Unknown())))
         if self.kwarg_name:
             scope.add(Symbol(self.kwarg_name, Dict(Unknown(), Unknown())))
+        return scope
 
     def __str__(self):
         vararg = (', {0}: Tuple'.format(self.vararg_name)
@@ -128,31 +131,27 @@ class Arguments(object):
 # the FunctionEvaluator is only to evaluate the type and static value of
 # function calls
 class FunctionEvaluator(object):
-    def __init__(self, functiondef_node, visitor):
-        self._name = getattr(functiondef_node, 'name', None)
-        self._arguments = Arguments(functiondef_node.args, visitor.context())
-        self._body = functiondef_node.body
+    def __init__(self, body, visitor, init=False):
+        self._body = body
         self._visitor = visitor
-        visitor.context().clear_constraints()
-        return_type, static_value = self.evaluate()
-        self._arguments.constrain_types(visitor.context().get_constraints())
-        self._return_type = return_type
-        self._static_value = static_value
+        self._init = init
 
-    def get_signature(self):
-        return self._arguments.get_signature(), self._return_type
-
-    def _evaluate(self, call_node=None):
+    def _evaluate(self, argument_scope):
         visitor = self._visitor
         visitor.begin_scope()
-        self._arguments.load_scope(visitor.scope(), call_node)
-        for stmt in self._body:
-            visitor.visit(stmt)
+        visitor.merge_scope(argument_scope)
+        if isinstance(self._body, list):
+            for stmt in self._body:
+                visitor.visit(stmt)
+        else:
+            visitor.visit(self._body)
         return visitor.end_scope()
 
-    def evaluate(self, call_node=None):
-        scope = self._evaluate(call_node)
-        if self._name == '__init__':
+    def evaluate(self, argument_scope):
+        if self._body is None:
+            return NoneType(), None
+        scope = self._evaluate(argument_scope)
+        if self._init:
             return_type = Instance('Class', Scope()) # TODO
         else:
             return_type = scope.get_type() or NoneType()
@@ -163,5 +162,13 @@ class FunctionEvaluator(object):
         return return_type, return_value
 
 
+# problem: where are we going to check for errors in the function call?
 def construct_function_type(functiondef_node, visitor):
-    return Function(FunctionEvaluator(functiondef_node, visitor))
+    signature = FunctionSignature(functiondef_node.args,
+                                  visitor.context())
+    evaluator = FunctionEvaluator(functiondef_node.body, visitor,
+        init=getattr(functiondef_node, 'name', None) == '__init__')
+    visitor.context().clear_constraints()
+    return_type, _ = evaluator.evaluate(signature.generic_scope())
+    signature.constrain_types(visitor.context().get_constraints())
+    return Function(signature, return_type, evaluator)

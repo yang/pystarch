@@ -27,3 +27,14 @@ at call-time. The solution to this is to assume that the return type is
 let "Unknown" get overridden by any other type. This means that when the
 recursion base case is processed, the type of the base case will override
 "Unknown" and it will be the assumed return type of the function.
+
+
+expr Call:
+Need signature and call_node to process args, and generate argument scope
+load_call_context(signature, call_node, context)
+
+Function = FunctionSignature + FunctionEvaluator
+
+FunctionSignature = names, types, varargname, kwargname, mincount
+
+FunctionEvaluator = f(signature, call_node)

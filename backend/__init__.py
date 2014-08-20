@@ -8,4 +8,5 @@ from util import type_subset, known_types, unify_types, \
     unifiable_types, comparable_types, type_intersection, type_patterns
 from inference import maybe_inferences
 from assign import assign
-from function import Arguments, construct_function_type
+from function import construct_function_type, FunctionSignature, \
+    FunctionEvaluator
