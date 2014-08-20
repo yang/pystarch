@@ -20,6 +20,9 @@ class ScopeVisitor(ast.NodeVisitor):
         self._annotations = []
         self._class_name = None     # the name of the class we are inside
 
+    def clone(self):
+        return ScopeVisitor(self._filepath, self.context(), self._imported)
+
     def scope(self):
         return self._context.get_top_scope()
 

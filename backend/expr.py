@@ -117,11 +117,25 @@ def _visit_expression(node, expected_type, context, warnings):
                 else:
                     return Unknown()
             union_type = Union(Num(), Str(), List(Unknown()))
-            intersect = type_intersection(left_probe, right_probe)
-            result_type = type_intersection(intersect, union_type)
-            recur(node.left, result_type or union_type)
-            recur(node.right, result_type or union_type)
-            return result_type if result_type else Unknown()
+            left_intersect = type_intersection(left_probe, union_type)
+            right_intersect = type_intersection(right_probe, union_type)
+            intersect = type_intersection(left_intersect, right_intersect)
+            if intersect is not None:
+                recur(node.left, intersect)
+                recur(node.right, intersect)
+                return intersect
+            elif left_intersect is not None:
+                recur(node.left, left_intersect)
+                recur(node.right, left_intersect)
+                return left_intersect
+            elif right_intersect is not None:
+                recur(node.left, right_intersect)
+                recur(node.right, right_intersect)
+                return right_intersect
+            else:
+                recur(node.left, union_type)
+                recur(node.right, union_type)
+                return union_type
         elif operator == 'Mult':
             union_type = Union(Num(), Str())
             left_probe = probe(node.left)
@@ -356,6 +370,9 @@ def _visit_expression(node, expected_type, context, warnings):
 class LambdaVisitor(object):
     def __init__(self, context):
         self._context = context
+
+    def clone(self):
+        return self
 
     def context(self):
         return self._context

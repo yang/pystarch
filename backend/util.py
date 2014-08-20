@@ -130,6 +130,8 @@ def type_patterns(types, patterns):
 
 
 def type_intersection(a, b):
+    if a is None or b is None:
+        return None
     if a == b:
         return a
     elif isinstance(a, Unknown):

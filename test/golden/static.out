@@ -1,4 +1,4 @@
-f Function(x: Unknown)
+f Function(x: Num)
 x01 Num 1
 x02 Num 3
 x03 Bool False
@@ -9,4 +9,4 @@ x07 Bool
 x08 Num
 
 testcases/static.py:9 constant-if-condition "If"
-testcases/static.py:20 inconsistent-types "Add" (NoneType, Num)
+testcases/static.py:20 type-error "x06" (NoneType vs Num)
