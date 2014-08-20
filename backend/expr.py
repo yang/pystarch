@@ -1,6 +1,3 @@
-"""This file should not make any changes to the context or try to do any
-type validation. If there is a problem with the types, it should do some
-default behavior or raise an exception if there is no default behavior."""
 from functools import partial
 from context import Scope, Symbol
 from type_objects import Bool, Num, Str, List, Tuple, Set, BaseTuple, \
@@ -20,16 +17,26 @@ def add_scope_symbol(scope, name, node, context):
     value = static_evaluate(node, context)
     scope.add(Symbol(name, typ, value))
 
+
 def type_error(node, label, got, expected, warnings):
     template = '{0} expected type {1} but got {2}'
     expected_str = [str(x) for x in expected]
     details = template.format(label, ' or '.join(expected_str), str(got))
     warnings.warn(node, 'type-error', details)
 
+
 def check_argument_type(node, label, got, expected, warnings):
     assert isinstance(expected, list)
     if Unknown() not in expected and got not in expected + [NoneType()]:
         type_error(node, 'Argument ' + str(label), got, expected, warnings)
+
+
+def check_consistent_types(node, types, expected_type, context, warnings):
+    unified = unify_types(types + [expected_type])
+    result = unified if not isinstance(unified, Unknown) else unify_types(types)
+    if isinstance(unified, Unknown):
+        details = ', '.join([str(x) for x in types])
+        warnings.warn(node, 'inconsistent-types', details)
 
 
 # context is the context at call-time, not definition-time
@@ -158,15 +165,20 @@ def _visit_expression(node, expected_type, context, warnings):
         return Function(Arguments(node.args, context), return_type)
     if token == 'IfExp':
         recur(node.test, Bool())
+        #check_consistent_types(node, [node.body, node.orelse],
+        #                       context, warnings)
         types = [recur(node.body, expected_type),
                  recur(node.orelse, expected_type)]
         return unify_types(types)
     if token == 'Dict':
+        #check_consistent_types(node, node.keys, context, warnings)
+        #check_consistent_types(node, node.values, context, warnings)
         key_type = unify_types([recur(key, Unknown()) for key in node.keys])
         value_type = unify_types([recur(value, Unknown())
                                   for value in node.values])
         return Dict(key_type, value_type)
     if token == 'Set':
+        #check_consistent_types(node, node.elts, context, warnings)
         subtype = (expected_type.item_type if isinstance(expected_type, Set)
                    else Unknown())
         return Set(unify_types([recur(elt, Unknown()) for elt in node.elts]))
@@ -315,6 +327,8 @@ def _visit_expression(node, expected_type, context, warnings):
         context.add_constraint(node.id, expected_type)
         return defined_type or Unknown()
     if token == 'List':
+        # find intersection of specified types,
+        #intersect = check_consistent_types(node, node.elts, context, warnings)
         subtype = (expected_type.item_type if isinstance(expected_type, List)
                    else Unknown())
         return List(unify_types([recur(elt, subtype) for elt in node.elts]))

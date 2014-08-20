@@ -18,22 +18,33 @@ def unique_type(types):
     return iter(known).next() if len(known) == 1 else Unknown()
 
 
-def _unify_types(a, b):
-    unique = unique_type([a, b])
-    if not isinstance(unique, Unknown):
-        return unique
-    elif isinstance(a, NoneType):
-        return b if isinstance(b, Maybe) else Maybe(b)
-    elif isinstance(b, NoneType):
-        return a if isinstance(a, Maybe) else Maybe(a)
-    elif isinstance(a, Maybe) and type_subset(b, a.subtype):
-        return a
-    elif isinstance(b, Maybe) and type_subset(a, b.subtype):
-        return b
+def reduce_types(types):
+    new_types = [type_ for type_ in types if not any(
+                    type_strict_subset(type_, t) for t in types)]
+    if len(new_types) == 2:
+        a, b = types
+        if isinstance(a, NoneType):
+            return [b] if isinstance(b, Maybe) else [Maybe(b)]
+        elif isinstance(b, NoneType):
+            return [a] if isinstance(a, Maybe) else [Maybe(a)]
+    return new_types
+
+
+def type_union(a, b):
+    reduced = reduce_types([a, b])
+    if len(reduced) == 1:
+        return reduced[0]
+    elif isinstance(a, Union) and isinstance(b, Union):
+        return Union(*reduce_types(a.subtypes + b.subtypes))
+    elif isinstance(a, Union):
+        return Union(*reduce_types(a.subtypes + [b]))
+    elif isinstance(b, Union):
+        return Union(*reduce_types(b.subtypes + [a]))
     else:
-        return Unknown()
+        return Union(*reduce_types([a, b]))
 
 
+# unify_types is the union of all the known types
 # used when types have to be merged such as in if/else expressions
 def unify_types(types):
     known = known_types(types)
@@ -42,7 +53,7 @@ def unify_types(types):
     elif len(known) == 1:
         return iter(known).next()
     else:
-        return reduce(_unify_types, known)
+        return reduce(type_union, known)
 
 
 # concept: is it possible for them to have the same type
@@ -109,6 +120,10 @@ def type_subset(a, b):
     return a == b
 
 
+def type_strict_subset(a, b):
+    return type_subset(a, b) and not type_subset(b, a)
+
+
 def type_patterns(types, patterns):
     return any(all(type_subset(x, y) for x, y in zip(types, pattern))
                for pattern in patterns)
@@ -133,5 +148,11 @@ def type_intersection(a, b):
         return b if b in a.subtypes else None
     elif isinstance(b, Union):
         return a if a in b.subtypes else None
+    elif isinstance(a, List) and isinstance(b, List):
+        intersect = type_intersection(a.item_type, b.item_type)
+        return List(intersect) if intersect is not None else None
+    elif isinstance(a, Set) and isinstance(b, Set):
+        intersect = type_intersection(a.item_type, b.item_type)
+        return List(intersect) if intersect is not None else None
     else:
         return None

@@ -2,7 +2,7 @@
 import ast
 from warning import Warnings
 from backend import visit_expression, Arguments, \
-    assign, get_token, assign_generators, type_intersection, \
+    assign, get_token, assign_generators, \
     unify_types, known_types, ExtendedContext, Scope, Union, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
