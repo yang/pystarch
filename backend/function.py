@@ -140,10 +140,9 @@ class FunctionSignature(object):
 # the FunctionEvaluator is only to evaluate the type and static value of
 # function calls
 class FunctionEvaluator(object):
-    def __init__(self, body, visitor, init=False):
+    def __init__(self, body, visitor):
         self._body = body
         self._visitor = visitor
-        self._init = init
         self._recursion_block = False
 
     def _evaluate(self, argument_scope):
@@ -165,10 +164,7 @@ class FunctionEvaluator(object):
             return NoneType(), None
         scope = self._evaluate(argument_scope)
         self._recursion_block = False
-        if self._init:
-            return_type = Instance('Class', Scope()) # TODO
-        else:
-            return_type = scope.get_type() or NoneType()
+        return_type = scope.get_type() or NoneType()
         if return_type != NoneType():
             return_value = scope.get_value() or UnknownValue()
         else:
@@ -176,16 +172,42 @@ class FunctionEvaluator(object):
         return return_type, return_value
 
 
+class ClassEvaluator(object):
+    def __init__(self, class_object):
+        self._class_object = class_object
+
+    def evaluate(self, argument_scope):
+        # argument_scope does not contain "self" parameter at this point
+        # because we create the "self" instance inside this method
+        instance = Instance(self._class_object.name, Scope())
+        class_attributes = self._class_object.attributes
+        for name in class_attributes.names():
+            symbol_type = class_attributes.get_type(name)
+            if isinstance(symbol_type, Function):
+                function_type = Function(symbol_type.signature,
+                    symbol_type.return_type, symbol_type.evaluator, instance)
+                instance.attributes.add(Symbol(name, function_type))
+
+        # Note: error checking for arguments passed in has already been
+        # handled because the signature for the class object is loaded
+        # based on the signature of the __init__ function (TODO)
+        init_function_type = instance.attributes.get_type('__init__')
+        if init_function_type is not None:
+            symbol = Symbol(init_function_type.signature.names[0], instance)
+            argument_scope.add(symbol)
+            init_function_type.evaluator.evaluate(argument_scope)
+        return instance, UnknownValue()
+
+
 # problem: where are we going to check for errors in the function call?
-def construct_function_type(functiondef_node, visitor):
+def construct_function_type(functiondef_node, visitor, instance=None):
     name = getattr(functiondef_node, 'name', None)
     signature = FunctionSignature(name, functiondef_node.args,
                                   visitor.context())
     body = functiondef_node.body
-    is_init = getattr(functiondef_node, 'name', None) == '__init__'
-    first_evaluator = FunctionEvaluator(body, visitor, init=is_init)
+    first_evaluator = FunctionEvaluator(body, visitor)
     visitor.context().clear_constraints()
     return_type, _ = first_evaluator.evaluate(signature.generic_scope())
     signature.constrain_types(visitor.context().get_constraints())
-    evaluator = FunctionEvaluator(body, visitor.clone(), init=is_init)
+    evaluator = FunctionEvaluator(body, visitor.clone())
     return Function(signature, return_type, evaluator)

@@ -7,7 +7,8 @@ from backend import visit_expression, \
     static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
     Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
     maybe_inferences, unifiable_types, Symbol, type_subset, Context, \
-    BaseTuple, construct_function_type, FunctionSignature, FunctionEvaluator
+    BaseTuple, construct_function_type, FunctionSignature, FunctionEvaluator, \
+    ClassEvaluator
 
 
 class ScopeVisitor(ast.NodeVisitor):
@@ -78,25 +79,15 @@ class ScopeVisitor(ast.NodeVisitor):
         self.generic_visit(node)
         scope = self.end_scope()
         self._class_name = None
-        # TODO: handle case of no __init__ function
         if '__init__' in scope:
-            init_signature = scope.get_type('__init__').signature
-            arguments = FunctionSignature.copy_without_first_argument(
-                                            init_signature)
-            instance_type = scope.get_type('__init__').return_type
-            common = set(scope.names()) & set(instance_type.attributes.names())
-            if len(common) > 0:
-                self.warn(node, 'overlapping-class-names', ','.join(common))
-            instance_type.attributes.merge(scope)
+            signature = scope.get_type('__init__').signature
         else:
-            arguments = FunctionSignature()
-            instance_type = Instance(node.name, Scope())
+            signature = FunctionSignature('__init__')   # TODO: add self arg?
+        return_type = Instance(node.name, Scope())      # dummy instance
         # TODO: separate class/static methods and attributes from the rest
-        evaluator = FunctionEvaluator(None, self)
-        class_type = Class(node.name, arguments, instance_type, evaluator,
-                           Scope())
-        # TODO: save self.x into scope where "self" is 1st param to init
-        self._context.add(Symbol(node.name, class_type, UnknownValue()))
+        class_type = Class(node.name, signature, return_type, None, scope)
+        class_type.evaluator = ClassEvaluator(class_type)
+        self._context.add(Symbol(node.name, class_type))
 
     def visit_FunctionDef(self, node):
         visitor = ScopeVisitor(self._filepath, self.context(),

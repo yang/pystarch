@@ -9,4 +9,4 @@ from util import type_subset, known_types, unify_types, \
 from inference import maybe_inferences
 from assign import assign
 from function import construct_function_type, FunctionSignature, \
-    FunctionEvaluator
+    FunctionEvaluator, ClassEvaluator

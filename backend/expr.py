@@ -264,10 +264,18 @@ def _visit_expression(node, expected_type, context, warnings):
                 warnings.warn(node, 'not-a-function')
             return Unknown()
         signature = function_type.signature
+        instance = (function_type.instance
+                    if isinstance(function_type, Function) else None)
+        offset = 1 if instance is not None else 0
+
+        argument_scope = Scope()
+        if instance is not None:
+            argument_scope.add(Symbol(signature.names[0], instance))
 
         # make sure all required arguments are specified
         if node.starargs is None and node.kwargs is None:
-            required = signature.names[len(node.args):signature.min_count]
+            start = offset + len(node.args)
+            required = signature.names[start:signature.min_count]
             kwarg_names = [keyword.arg for keyword in node.keywords]
             missing = [name for name in required if name not in kwarg_names]
             for missing_argument in missing:
@@ -278,14 +286,14 @@ def _visit_expression(node, expected_type, context, warnings):
             if len(node.args) + len(node.keywords) > len(signature.types):
                 warnings.warn(node, 'too-many-arguments')
 
-        argument_scope = Scope()
         # load positional arguments
         for i, arg in enumerate(node.args):
-            if i >= len(signature):
+            if i + offset >= len(signature):
                 break
-            arg_type = recur(arg, signature.types[i])
+            arg_type = recur(arg, signature.types[i + offset])
             value = static_evaluate(arg, context)
-            argument_scope.add(Symbol(signature.names[i], arg_type, value))
+            argument_scope.add(Symbol(signature.names[i + offset],
+                                      arg_type, value))
 
         # load keyword arguments
         for kwarg in node.keywords:

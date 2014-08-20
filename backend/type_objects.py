@@ -102,10 +102,12 @@ class Dict(EqualityMixin):
 
 
 class Function(EqualityMixin, CallableMixin):
-    def __init__(self, signature, return_type, evaluator):
+    def __init__(self, signature, return_type, evaluator, instance=None):
+        assert evaluator is not None
         self.signature = signature
         self.return_type = return_type
         self.evaluator = evaluator
+        self.instance = instance
 
     def example(self):
         return object()
