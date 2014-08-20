@@ -1,4 +1,2 @@
-f Function(a: Unknown)
-x Num
-
-testcases/recursion.py:2 type-error "Mult" ([Num, Unknown] vs (Num, Num) or (Num, Str) or (Num, Str))
+f Function(a: Num)
+x Union(Num,Str)

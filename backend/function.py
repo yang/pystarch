@@ -29,7 +29,9 @@ def call_argtypes(call_node, context):
 
 # "arguments" parameter is node.args for FunctionDef or Lambda
 class FunctionSignature(object):
-    def __init__(self, arguments=None, context=None, decorator_list=[]):
+    def __init__(self, name=None, arguments=None, context=None,
+                       decorator_list=[]):
+        self.name = name
         if arguments is None:
             self.names = []
             self.types = []
@@ -110,6 +112,9 @@ class FunctionSignature(object):
 
     def generic_scope(self):
         scope = Scope()
+        if self.name is not None:   # for recursive calls
+            function_type = Function(self, Unknown(), NullEvaluator())
+            scope.add(Symbol(self.name, function_type))
         for name, argtype in self.get_dict().items():
             scope.add(Symbol(name, argtype))
         if self.vararg_name:
@@ -167,9 +172,15 @@ class FunctionEvaluator(object):
         return return_type, return_value
 
 
+class NullEvaluator(object):  # for recursion
+    def evaluate(self, argument_scope):
+        return Unknown(), UnknownValue()
+
+
 # problem: where are we going to check for errors in the function call?
 def construct_function_type(functiondef_node, visitor):
-    signature = FunctionSignature(functiondef_node.args,
+    name = getattr(functiondef_node, 'name', None)
+    signature = FunctionSignature(name, functiondef_node.args,
                                   visitor.context())
     evaluator = FunctionEvaluator(functiondef_node.body, visitor,
         init=getattr(functiondef_node, 'name', None) == '__init__')
