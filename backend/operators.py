@@ -41,6 +41,7 @@ def get_operator_function(name):
         'Or': or_operator,
         'Add': add_operator,
         'In': operator.contains,
+        'NotIn': lambda x, y: not operator.contains(x, y),
         'Div': operator.truediv,
         'FloorDiv': operator.floordiv,
         'BitAnd': operator.and_,

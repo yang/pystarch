@@ -24,6 +24,9 @@ def assign_single_target(target, assigned_type, static_value, context):
         new_symbol = Symbol(target.attr, assigned_type, static_value)
         instance.attributes.add(new_symbol)
         return (target.attr, old_symbol, new_symbol)
+    elif target_token == 'Tuple':
+        # TODO: implement this
+        return ('Tuple', None, None)
     else:
         raise RuntimeError('Unrecognized assignment target: ' + target_token)
 
