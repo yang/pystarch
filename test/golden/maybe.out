@@ -4,7 +4,3 @@ c Maybe(Num)
 f Function(a: Num)
 g Function(a: Num)
 h Function(a: Num)
-
-testcases/maybe.py:2 constant-if-condition "If"
-testcases/maybe.py:7 constant-if-condition "If"
-testcases/maybe.py:7 constant-if-condition "If"
