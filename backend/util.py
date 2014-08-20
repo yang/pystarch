@@ -138,6 +138,13 @@ def type_intersection(a, b):
         return b
     elif isinstance(b, Unknown):
         return a
+    elif isinstance(a, Maybe) and not isinstance(b, Maybe):
+        return type_intersection(a.subtype, b)
+    elif isinstance(b, Maybe) and not isinstance(a, Maybe):
+        return type_intersection(a, b.subtype)
+    elif isinstance(b, Maybe) and isinstance(b, Maybe):
+        intersect = type_intersection(a.subtype, b.subtype)
+        return Maybe(intersect) if intersect is not None else None
     elif isinstance(a, Union) and isinstance(b, Union):
         common = list(set(a.subtypes) & set(b.subtypes))
         if len(common) == 0:
