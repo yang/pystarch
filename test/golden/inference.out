@@ -2,6 +2,7 @@ x Maybe(Num)
 y Maybe(Num)
 z Num
 
-testcases/inference.py:2 undefined-function "random"
-testcases/inference.py:3 undefined-function "random"
-testcases/inference.py:6 type-error "Add" (Maybe(Num) vs Union(Num,Str,List(Unknown),BaseTuple))
+testcases/inference.py:2 undefined "random" (random)
+testcases/inference.py:3 undefined "random" (random)
+testcases/inference.py:6 type-error "x" (Maybe(Num) vs Union(Num,Str,List(Unknown)))
+testcases/inference.py:6 type-error "y" (Maybe(Num) vs Union(Num,Str,List(Unknown)))

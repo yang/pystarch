@@ -248,7 +248,8 @@ def _visit_expression(node, expected_type, context, warnings):
     if token == 'Call':
         function_type = recur(node.func, Unknown())
         if not isinstance(function_type, (Class, Function)):
-            warnings.warn(node, 'not-a-function')
+            if not isinstance(function_type, Unknown):
+                warnings.warn(node, 'not-a-function')
             return Unknown()
         arg_types = function_type.arguments.types
         # TODO: handle keyword arguments
