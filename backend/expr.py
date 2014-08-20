@@ -107,7 +107,7 @@ def _visit_expression(node, expected_type, context, warnings):
     if token == 'BinOp':
         operator = get_token(node.op)
         if operator == 'Add':
-            union_type = Union(Num(), Str(), List(Unknown))
+            union_type = Union(Num(), Str(), List(Unknown()))
             intersect = type_intersection(probe(node.left), probe(node.right))
             result_type = type_intersection(intersect, union_type)
             recur(node.left, result_type or union_type)
