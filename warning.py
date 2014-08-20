@@ -29,8 +29,8 @@ class NodeWarning(object):
 
     def __str__(self):
         extra = ' ({0})'.format(self.details) if self.details else ''
-        return self.filepath + ':{0} {1} "{2}"{3}'.format(self.node.lineno,
-            self.category, show_node(self.node), extra)
+        return self.filepath + ':{0} {1} "{2}"{3}'.format(
+            self.node.lineno, self.category, show_node(self.node), extra)
 
 
 class Warnings(object):

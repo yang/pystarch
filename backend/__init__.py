@@ -1,5 +1,4 @@
-from expr import visit_expression, make_argument_scope, get_token, \
-    assign_generators
+from expr import visit_expression, get_token
 from evaluate import static_evaluate, UnknownValue
 from context import Context, ExtendedContext, Scope, Symbol
 from type_objects import NoneType, Bool, Num, Str, List, Dict, \

@@ -1,7 +1,9 @@
 import os
 import sys
 import ast
-import sys, os, imp, marshal, meta
+import imp
+import marshal
+import meta
 import cPickle as pickle
 from hashlib import sha256
 from visitor import ScopeVisitor
@@ -37,7 +39,7 @@ def get_module_source_path(import_name, current_filepath):
     if module_file is None and module_path == '':
         # module does not live in a file
         raise RuntimeError('Could not find module source for '
-            + str(import_name))
+                           + str(import_name))
     elif module_file is None:   # probably a package
         if os.path.isdir(module_path):
             for extension in ['py', 'pyc', 'pyo']:
@@ -79,8 +81,8 @@ def import_module(name, current_filepath, imported):
         with open(cache_filepath, 'rb') as cache_file:
             return pickle.load(cache_file), filepath, is_package
     elif filepath in imported:
-        i = imported.index(filepath)
-        paths = ' -> '.join(imported[i:] + [filepath])
+        #i = imported.index(filepath)
+        #paths = ' -> '.join(imported[i:] + [filepath])
         #print('CIRCULAR: ' + paths)
         return Instance('object', Scope()), filepath, is_package
     else:
@@ -93,7 +95,7 @@ def import_module(name, current_filepath, imported):
 
 
 def import_chain(fully_qualified_name, asname, import_scope, current_filepath,
-        imported):
+                 imported):
     scope = import_scope
     filepath = current_filepath
     is_package = True
@@ -126,7 +128,7 @@ def get_path_for_level(filepath, level):
 # only for "from x import y" syntax
 def import_from_chain(fully_qualified_name, level, current_filepath, imported):
     return import_chain(fully_qualified_name, None, Scope(),
-        get_path_for_level(current_filepath, level), imported)
+                        get_path_for_level(current_filepath, level), imported)
 
 
 class ModuleVisitor(ScopeVisitor):
@@ -141,7 +143,7 @@ class ModuleVisitor(ScopeVisitor):
         for alias in node.names:
             try:
                 import_chain(alias.name, alias.asname, scope, self._filepath,
-                    self._imported)
+                             self._imported)
             except RuntimeError as failure:
                 self.warn('import-failed', node,
                           alias.name + ': ' + str(failure))
@@ -149,7 +151,7 @@ class ModuleVisitor(ScopeVisitor):
     def visit_ImportFrom(self, node):
         try:
             module = import_from_chain(node.module, node.level, self._filepath,
-                self._imported)
+                                       self._imported)
         except RuntimeError as failure:
             self.warn('import-failed', node, '{0}: {1}'.format(
                 node.module, failure))

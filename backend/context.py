@@ -30,6 +30,10 @@ class Symbol(object):
     def __init__(self, name, type_=None, value=None):
         assert name is not None
         assert type_ is not None
+        self._name = None
+        self._type = None
+        self._value = None
+        self._assign_expression = None
         self.assign(name, type_, value)
 
     def assign(self, name, type_, value):
@@ -109,10 +113,9 @@ class Scope(object):
         return self._return
 
     def __str__(self):
-        fmt = lambda name, sym: '{0} {1}'.format(name, sym)
         end = '\n' if len(self._symbols) > 0 else ''
-        return '\n'.join([fmt(name, self._symbols[name])
-            for name in sorted(self._symbols.keys())]) + end
+        return '\n'.join(['{0} {1}'.format(name, self._symbols[name])
+                          for name in sorted(self._symbols.keys())]) + end
 
     def __contains__(self, name):
         return name in self._symbols
@@ -181,7 +184,7 @@ class Context(object):
     def add_constraint(self, name, type_):
         old_type = self._constraints.get(name, self.get_type(name))
         self._constraints[name] = (type_intersection(old_type, type_)
-            if old_type is not None else type_)
+                                   if old_type is not None else type_)
 
     def get_constraints(self):
         return self._constraints

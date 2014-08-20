@@ -1,7 +1,6 @@
 
 High Priority
 =============
-Don't visit unreachable code
 When clonining visitor, have to clone context too
 Negative slice indices, slice step size (for tuple type evaluation)
 Make an HTML debugging display just like pysonar
@@ -19,6 +18,7 @@ avoid infinite loops as long as we avoid recurring when the constraint does
 not cause any tightening.
 from a.b import module
 Handle circular imports properly
+Tuple and subscript assignment
 
 Medium Priority
 ===============

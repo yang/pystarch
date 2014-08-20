@@ -1,14 +1,10 @@
 # pylint: disable=invalid-name
 import ast
 from warning import Warnings
-from backend import visit_expression, \
-    assign, get_token, assign_generators, \
-    unify_types, known_types, ExtendedContext, Scope, Union, \
-    static_evaluate, UnknownValue, NoneType, Bool, Num, Str, List, Dict, \
-    Tuple, Instance, Class, Function, Maybe, Unknown, comparable_types, \
-    maybe_inferences, unifiable_types, Symbol, type_subset, Context, \
-    BaseTuple, construct_function_type, FunctionSignature, FunctionEvaluator, \
-    ClassEvaluator
+from backend import visit_expression, assign, unify_types, ExtendedContext, \
+    Scope, static_evaluate, UnknownValue, NoneType, Bool, List, Instance, \
+    Class, Unknown, maybe_inferences, Symbol, type_subset, Context, \
+    construct_function_type, FunctionSignature, ClassEvaluator
 
 
 class ScopeVisitor(ast.NodeVisitor):
@@ -56,7 +52,7 @@ class ScopeVisitor(ast.NodeVisitor):
 
     def check_type(self, node, expected_type=Unknown()):
         computed_type = visit_expression(node, expected_type, self.context(),
-                                       self._warnings)
+                                         self._warnings)
         if not type_subset(computed_type, expected_type):
             details = '{0} vs {1}'.format(computed_type, expected_type)
             self.warn('type-error', node, details)
@@ -109,8 +105,8 @@ class ScopeVisitor(ast.NodeVisitor):
         # the default types, annotated types, and constrained types
         signature = function_type.signature
         types = zip(signature.names, signature.types,
-            signature.annotated_types, signature.default_types)
-        for name, constrained_type, annotated_type, default_type in types:
+                    signature.annotated_types, signature.default_types)
+        for name, _, annotated_type, default_type in types:
             if (annotated_type != Unknown() and default_type != Unknown() and
                     default_type != annotated_type):
                 self.warn('default-argument-type-error', node, name)
@@ -120,7 +116,7 @@ class ScopeVisitor(ast.NodeVisitor):
         new_type = (unify_types([previous_type, return_type])
                     if previous_type is not None else return_type)
         value = (static_value or UnknownValue() if previous_type is None else
-                    UnknownValue())
+                 UnknownValue())
         self._context.set_return(Symbol('return', new_type, value))
 
     def check_return(self, node, is_yield=False):

@@ -20,10 +20,11 @@ def assign_single_target(target, assigned_type, static_value, context):
         instance = expr.expression_type(target.value, context)
         if not isinstance(instance, Instance):
             return (target.attr, None, None)
-        old_symbol = instance.attributes.get(target.attr)
-        new_symbol = Symbol(target.attr, assigned_type, static_value)
-        instance.attributes.add(new_symbol)
-        return (target.attr, old_symbol, new_symbol)
+        else:
+            old_symbol = instance.attributes.get(target.attr)
+            new_symbol = Symbol(target.attr, assigned_type, static_value)
+            instance.attributes.add(new_symbol)
+            return (target.attr, old_symbol, new_symbol)
     elif target_token == 'Tuple':
         # TODO: implement this
         return ('Tuple', None, None)
@@ -57,9 +58,10 @@ def assign(target, value, context, warnings, generator=False):
             assign_types = repeat(assign_type.item_type)
         else:
             assign_types = repeat(Unknown())
-        return [assign_single_target(target, assign_type, static_value,
-                context) for target, assign_type, static_value
-                in zip(target.elts, assign_types, assign_values)]
+        return [
+            assign_single_target(target, assign_type, static_value, context)
+            for target, assign_type, static_value
+            in zip(target.elts, assign_types, assign_values)]
     else:
         return [assign_single_target(target, assign_type,
                                      static_value, context)]

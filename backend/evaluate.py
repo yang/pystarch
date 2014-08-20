@@ -68,7 +68,7 @@ def static_evaluate(node, context):
         types = map(partial(expr.expression_type, context=context), operands)
         params = zip(values, types)
         results = [comparison_evaluate(operators[i], params[i], params[i+1])
-            for i in range(len(operators))]
+                   for i in range(len(operators))]
         return operator_evaluate('And', *results)
     if token == 'List':
         return list(map(recur, node.elts))

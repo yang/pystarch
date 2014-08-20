@@ -12,50 +12,6 @@ def get_token(node):
     return node.__class__.__name__
 
 
-def add_scope_symbol(scope, name, node, context):
-    typ = expression_type(node, context)
-    value = static_evaluate(node, context)
-    scope.add(Symbol(name, typ, value))
-
-
-def type_error(node, label, got, expected, warnings):
-    template = '{0} expected type {1} but got {2}'
-    expected_str = [str(x) for x in expected]
-    details = template.format(label, ' or '.join(expected_str), str(got))
-    warnings.warn(node, 'type-error', details)
-
-
-def check_argument_type(node, label, got, expected, warnings):
-    assert isinstance(expected, list)
-    if Unknown() not in expected and got not in expected + [NoneType()]:
-        type_error(node, 'Argument ' + str(label), got, expected, warnings)
-
-
-def check_consistent_types(node, types, expected_type, context, warnings):
-    unified = unify_types(types + [expected_type])
-    result = unified if not isinstance(unified, Unknown) else unify_types(types)
-    if isinstance(unified, Unknown):
-        details = ', '.join([str(x) for x in types])
-        warnings.warn(node, 'inconsistent-types', details)
-
-
-# context is the context at call-time, not definition-time
-def make_argument_scope(call_node, arguments, context):
-    scope = Scope()
-    for name, value in zip(arguments.names, call_node.args):
-        add_scope_symbol(scope, name, value, context)
-    for keyword in call_node.keywords:
-        if keyword.arg in arguments.names:
-            add_scope_symbol(scope, keyword.arg, keyword.value, context)
-    if call_node.starargs is not None and arguments.vararg_name is not None:
-        add_scope_symbol(scope, arguments.vararg_name, call_node.starargs,
-            context)
-    if call_node.kwargs is not None and arguments.kwarg_name is not None:
-        add_scope_symbol(scope, arguments.kwarg_name, call_node.kwargs,
-            context)
-    return scope
-
-
 def assign_generators(generators, context, warnings):
     for generator in generators:
         assign(generator.target, generator.iter, context,
@@ -67,7 +23,7 @@ def comprehension_type(element, generators, expected_element_type,
     context.begin_scope()
     assign_generators(generators, context, warnings)
     element_type = visit_expression(element, expected_element_type,
-                                   context, warnings)
+                                    context, warnings)
     context.end_scope()
     return element_type
 
@@ -88,7 +44,7 @@ class NullWarnings:
 def visit_expression(node, expected_type, context, warnings=NullWarnings()):
     result_type = _visit_expression(node, expected_type, context, warnings)
     if (not type_subset(result_type, expected_type)
-        and not isinstance(result_type, Unknown)):
+            and not isinstance(result_type, Unknown)):
         details = '{0} vs {1}'.format(result_type, expected_type)
         warnings.warn(node, 'type-error', details)
     return result_type
@@ -188,20 +144,15 @@ def _visit_expression(node, expected_type, context, warnings):
         return construct_function_type(node, LambdaVisitor(context))
     if token == 'IfExp':
         recur(node.test, Bool())
-        #check_consistent_types(node, [node.body, node.orelse],
-        #                       context, warnings)
         types = [recur(node.body, expected_type),
                  recur(node.orelse, expected_type)]
         return unify_types(types)
     if token == 'Dict':
-        #check_consistent_types(node, node.keys, context, warnings)
-        #check_consistent_types(node, node.values, context, warnings)
         key_type = unify_types([recur(key, Unknown()) for key in node.keys])
         value_type = unify_types([recur(value, Unknown())
                                   for value in node.values])
         return Dict(key_type, value_type)
     if token == 'Set':
-        #check_consistent_types(node, node.elts, context, warnings)
         subtype = (expected_type.item_type if isinstance(expected_type, Set)
                    else Unknown())
         return Set(unify_types([recur(elt, Unknown()) for elt in node.elts]))
@@ -218,8 +169,8 @@ def _visit_expression(node, expected_type, context, warnings):
                              if isinstance(expected_type, Dict)
                              else Unknown())
         expected_value_type = (expected_type.value_type
-                             if isinstance(expected_type, Dict)
-                             else Unknown())
+                               if isinstance(expected_type, Dict)
+                               else Unknown())
         key_type = comp(node.key, node.generators, expected_key_type)
         value_type = comp(node.value, node.generators, expected_value_type)
         return Dict(key_type, value_type)
@@ -249,7 +200,7 @@ def _visit_expression(node, expected_type, context, warnings):
             recur(node.left, Maybe(Unknown()))
             recur(node.comparators[0], NoneType())
         if operator in ['In', 'NotIn']:
-            # constrain right to list/set of left, and left to instance of right
+            # constrain right to list/set of left, and left to inst. of right
             left_probe = probe(node.left)
             right_probe = probe(node.comparators[0])
             union_type = Union(List(left_probe), Set(left_probe),
@@ -367,8 +318,6 @@ def _visit_expression(node, expected_type, context, warnings):
         context.add_constraint(node.id, expected_type)
         return defined_type or Unknown()
     if token == 'List':
-        # find intersection of specified types,
-        #intersect = check_consistent_types(node, node.elts, context, warnings)
         subtype = (expected_type.item_type if isinstance(expected_type, List)
                    else Unknown())
         return List(unify_types([recur(elt, subtype) for elt in node.elts]))
