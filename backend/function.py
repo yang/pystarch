@@ -1,4 +1,5 @@
 import expr
+from itertools import repeat
 from context import Symbol, Scope
 from type_objects import List, Dict, Unknown, Function, NoneType, Instance
 from util import type_intersection
@@ -7,23 +8,6 @@ from evaluate import UnknownValue
 
 def get_token(node):
     return node.__class__.__name__
-
-
-def call_argtypes(call_node, context):
-    types = []
-    keyword_types = {}
-    for arg in call_node.args:
-        types.append(expr.expression_type(arg, context))
-    for keyword in call_node.keywords:
-        keyword_types[keyword.arg] = expr.expression_type(
-            keyword.value, context)
-    if call_node.starargs is not None:
-        keyword_types['*args'] = expr.expression_type(call_node.starargs,
-                                                      context)
-    if call_node.kwargs is not None:
-        keyword_types['**kwargs'] = expr.expression_type(call_node.kwargs,
-                                                         context)
-    return types, keyword_types
 
 
 class NullEvaluator(object):  # for recursion
@@ -108,12 +92,9 @@ class FunctionSignature(object):
     def _get_annotated_types(self, decorator_list, context):
         types_decorator = [d for d in decorator_list
                            if get_token(d) == 'Call' and d.func.id == 'types']
-        if len(types_decorator) == 1:
-            argtypes, kwargtypes = call_argtypes(types_decorator[0], context)
-        else:
-            argtypes, kwargtypes = [], {}
-        return argtypes + [kwargtypes.get(name, Unknown())
-                           for name in self.names[len(argtypes):]]
+        return ([expr.expression_type(arg, context)
+                 for arg in types_decorator[0].args]
+                if len(types_decorator) == 1 else repeat(Unknown()))
 
     def generic_scope(self):
         scope = Scope()
