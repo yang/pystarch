@@ -181,8 +181,8 @@ def analyze(source, filepath=None, context=None, imported=[]):
     return visitor.report()
 
 
-def analysis(source, filepath=None):
-    scope, warnings, _ = analyze(source, filepath)
+def analysis(source, filepath=None, context=None):
+    scope, warnings, _ = analyze(source, filepath, context)
     warning_output = str(warnings)
     scope_output = str(scope)
     separator = '\n' if warning_output and scope_output else ''
@@ -193,6 +193,7 @@ def main():
     filepath = sys.argv[1]
     with open(filepath) as source_file:
         source = source_file.read()
+    #sys.stdout.write(analysis(source, filepath, Context()))
     sys.stdout.write(analysis(source, filepath))
 
 

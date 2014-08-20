@@ -181,11 +181,11 @@ def construct_function_type(functiondef_node, visitor):
     name = getattr(functiondef_node, 'name', None)
     signature = FunctionSignature(name, functiondef_node.args,
                                   visitor.context())
-    first_evaluator = FunctionEvaluator(functiondef_node.body, visitor,
-        init=getattr(functiondef_node, 'name', None) == '__init__')
+    body = functiondef_node.body
+    is_init = getattr(functiondef_node, 'name', None) == '__init__'
+    first_evaluator = FunctionEvaluator(body, visitor, init=is_init)
     visitor.context().clear_constraints()
     return_type, _ = first_evaluator.evaluate(signature.generic_scope())
     signature.constrain_types(visitor.context().get_constraints())
-    evaluator = FunctionEvaluator(functiondef_node.body, visitor.clone(),
-        init=getattr(functiondef_node, 'name', None) == '__init__')
+    evaluator = FunctionEvaluator(body, visitor.clone(), init=is_init)
     return Function(signature, return_type, evaluator)

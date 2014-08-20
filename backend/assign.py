@@ -37,9 +37,9 @@ def assign(target, value, context, warnings, generator=False):
         if isinstance(value_type, (List, Set)):
             assign_type = value_type.item_type
         elif isinstance(value_type, Tuple):
-            return []       # TODO
+            assign_type = Unknown()       # TODO
         else:
-            return []
+            assign_type = Unknown()
     else:
         assign_type = value_type
 
