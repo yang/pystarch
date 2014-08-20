@@ -190,12 +190,13 @@ class ClassEvaluator(object):
 
         # Note: error checking for arguments passed in has already been
         # handled because the signature for the class object is loaded
-        # based on the signature of the __init__ function (TODO)
+        # based on the signature of the __init__ function
         init_function_type = instance.attributes.get_type('__init__')
         if init_function_type is not None:
             symbol = Symbol(init_function_type.signature.names[0], instance)
             argument_scope.add(symbol)
             init_function_type.evaluator.evaluate(argument_scope)
+        instance.initialized = True
         return instance, UnknownValue()
 
 
@@ -205,13 +206,17 @@ def construct_function_type(functiondef_node, visitor, instance=None):
     signature = FunctionSignature(name, functiondef_node.args,
                                   visitor.context())
     body = functiondef_node.body
-    first_evaluator = FunctionEvaluator(body, visitor)
-    visitor.context().clear_constraints()
+    first_visitor = (visitor if instance is None
+                     or (name == '__init__' and not instance.initialized)
+                     or (name != '__init__' and instance.initialized)
+                     else visitor.clone())
+    first_evaluator = FunctionEvaluator(body, first_visitor)
+    first_visitor.context().clear_constraints()
     argument_scope = signature.generic_scope()
     if instance is not None:
         self_symbol = Symbol(signature.names[0], instance)
         argument_scope.add(self_symbol)
     return_type, _ = first_evaluator.evaluate(argument_scope)
-    signature.constrain_types(visitor.context().get_constraints())
+    signature.constrain_types(first_visitor.context().get_constraints())
     evaluator = FunctionEvaluator(body, visitor.clone())
     return Function(signature, return_type, evaluator)

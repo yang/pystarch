@@ -95,8 +95,8 @@ class ScopeVisitor(ast.NodeVisitor):
         self._class_instance = class_type.evaluator.evaluate(argument_scope)[0]
         self.begin_scope()
         self.generic_visit(node)        # now all functiondefs have access
-        self.end_scope()
-        self._class_instance = None     # to class instance to load "self"
+        self.end_scope()                # to class instance to load "self"
+        self._class_instance = None
 
     def visit_FunctionDef(self, node):
         visitor = ScopeVisitor(self._filepath, self.context(),

@@ -1,7 +1,5 @@
-Test Test
+Test Test None
 a Num 1
 b Str 2
 c Num
 t Instance(Test)
-
-testcases/classes.py:9 undefined "self"

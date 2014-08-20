@@ -135,7 +135,6 @@ def _visit_expression(node, expected_type, context, warnings):
             else:
                 recur(node.left, union_type)
                 recur(node.right, union_type)
-                print('Add')
                 return union_type
         elif operator == 'Mult':
             union_type = Union(Num(), Str())

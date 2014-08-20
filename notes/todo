@@ -1,4 +1,6 @@
 
+When clonining visitor, have to clone context too
+
 The ScopeVisitor is responsible for every node that is not part of an
 expression. Once you reach an expression in the tree, we branch into a
 recursive function evaluator that does error-checking for expressions

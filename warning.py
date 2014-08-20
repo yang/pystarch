@@ -38,6 +38,9 @@ class Warnings(object):
         self._filepath = filepath
         self._warnings = []
 
+    def __len__(self):
+        return len(self._warnings)
+
     def set_filepath(self, filepath):
         self._filepath = filepath
 
