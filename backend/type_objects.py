@@ -2,7 +2,7 @@
 class EqualityMixin(object):
     def __eq__(self, other):
         return (isinstance(other, self.__class__)
-            and self.__dict__ == other.__dict__)
+                and self.__dict__ == other.__dict__)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -24,13 +24,13 @@ class ItemTypeMixin(object):
 class TupleMixin(object):
     def __str__(self):
         return '{0}({1})'.format(self.__class__.__name__,
-            ','.join([str(x) for x in self.item_types]))
+                                 ','.join([str(x) for x in self.item_types]))
 
 
 class CallableMixin(object):
     def __str__(self):
         return '{0}({1} -> {2})'.format(self.__class__.__name__,
-            self.signature, self.return_type)
+                                        self.signature, self.return_type)
 
 
 class Unknown(EqualityMixin, BasicMixin):
@@ -98,7 +98,7 @@ class Dict(EqualityMixin):
 
     def __str__(self):
         return '{0}({1},{2})'.format(self.__class__.__name__,
-            self.key_type, self.value_type)
+                                     self.key_type, self.value_type)
 
 
 class Function(EqualityMixin, CallableMixin):

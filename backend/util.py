@@ -19,8 +19,8 @@ def unique_type(types):
 
 
 def reduce_types(types):
-    new_types = [type_ for type_ in types if not any(
-                    type_strict_subset(type_, t) for t in types)]
+    new_types = [type_ for type_ in types
+                 if not any(type_strict_subset(type_, t) for t in types)]
     if len(new_types) == 2:
         a, b = types
         if isinstance(a, NoneType):
@@ -104,9 +104,9 @@ def type_subset(a, b):
     if isinstance(a, Tuple) and isinstance(b, BaseTuple):
         return True
     if isinstance(a, Tuple) and isinstance(b, Tuple):
-        return (len(a.item_types) == len(b.item_types) and
-                all(type_subset(x, y) for x, y
-                in zip(a.item_types, b.item_types)))
+        return (len(a.item_types) == len(b.item_types)
+                and all(type_subset(x, y)
+                        for x, y in zip(a.item_types, b.item_types)))
     if isinstance(a, Dict) and isinstance(b, Dict):
         return (type_subset(a.key_type, b.key_type) and
                 type_subset(a.value_type, b.value_type))

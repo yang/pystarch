@@ -13,7 +13,7 @@ def assign_single_target(target, assigned_type, static_value, context):
         context.add(new_symbol)
         return (target.id, old_symbol, new_symbol)
     elif target_token == 'Subscript':
-        value = expr.expression_type(target.value, context)
+        _ = expr.expression_type(target.value, context)
         # TODO: implement this
         return ('Subscript', None, None)
     elif target_token == 'Attribute':

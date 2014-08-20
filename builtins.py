@@ -305,8 +305,8 @@ class slice(object):
         self.stop = stop
         self.step = step
 
-def sorted(iterable, cmp=lambda x,y: number, key=lambda x: number,
-        reverse=boolean):
+def sorted(iterable, cmp=lambda x, y: number, key=lambda x: number,
+           reverse=boolean):
     return iterable
 
 def staticmethod(func):

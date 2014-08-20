@@ -3,7 +3,7 @@ from context import Scope, Symbol
 from type_objects import Bool, Num, Str, List, Tuple, Set, BaseTuple, \
     Dict, Function, Instance, Unknown, NoneType, Class, Union, Maybe
 from evaluate import static_evaluate, UnknownValue
-from util import unique_type, unify_types, type_intersection, type_subset
+from util import unify_types, type_intersection, type_subset
 from assign import assign
 from function import construct_function_type
 
@@ -28,7 +28,7 @@ def comprehension_type(element, generators, expected_element_type,
     return element_type
 
 
-class NullWarnings:
+class NullWarnings(object):
     def warn(self, node, category, details=None):
         pass
 
@@ -207,7 +207,7 @@ def _visit_expression(node, expected_type, context, warnings):
                                Dict(left_probe, Unknown()))
             recur(node.comparators[0], union_type)
             if isinstance(right_probe, (List, Set)):
-                result = recur(node.left, right_probe.item_type)
+                recur(node.left, right_probe.item_type)
             if isinstance(right_probe, Dict):
                 recur(node.left, right_probe.key_type)
         return Bool()
