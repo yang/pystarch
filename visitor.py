@@ -19,7 +19,7 @@ class ScopeVisitor(ast.NodeVisitor):
         self._context = context if context is not None else Context()
         self._imported = imported
         self._annotations = []
-        self._class_name = None     # the name of the class we are inside
+        self._class_instance = None
 
     def clone(self):
         return ScopeVisitor(self._filepath, self.context(), self._imported)
@@ -74,11 +74,12 @@ class ScopeVisitor(ast.NodeVisitor):
                     self.warn('type-change', node, details)
 
     def visit_ClassDef(self, node):
-        self._class_name = node.name
-        self.begin_scope()
-        self.generic_visit(node)
-        scope = self.end_scope()
-        self._class_name = None
+        # ignore warnings on the first pass because we don't have an
+        # instance to pass in as "self"
+        visitor = ScopeVisitor(self._filepath, self.context())
+        visitor.begin_scope()
+        visitor.generic_visit(node)
+        scope = visitor.end_scope()
         if '__init__' in scope:
             signature = scope.get_type('__init__').signature
         else:
@@ -89,10 +90,19 @@ class ScopeVisitor(ast.NodeVisitor):
         class_type.evaluator = ClassEvaluator(class_type)
         self._context.add(Symbol(node.name, class_type))
 
+        # now visit the class contents to generate warnings
+        argument_scope = signature.generic_scope()
+        self._class_instance = class_type.evaluator.evaluate(argument_scope)[0]
+        self.begin_scope()
+        self.generic_visit(node)        # now all functiondefs have access
+        self.end_scope()
+        self._class_instance = None     # to class instance to load "self"
+
     def visit_FunctionDef(self, node):
         visitor = ScopeVisitor(self._filepath, self.context(),
                                warnings=self._warnings)
-        function_type = construct_function_type(node, visitor)
+        function_type = construct_function_type(node, visitor,
+                                                self._class_instance)
         self._context.add(Symbol(node.name, function_type, UnknownValue()))
 
         # now check that all the types are consistent between

@@ -8,7 +8,7 @@ def show_node(node):
     if token == 'Call':
         return show_node(node.func)
     if token == 'Attribute':
-        return '.' + show_node(node.attr)
+        return '.' + node.attr
     if token in ['BoolOp', 'BinOp', 'UnaryOp']:
         return get_token(node.op)
     if token == 'Assign':

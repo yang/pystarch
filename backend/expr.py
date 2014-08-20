@@ -266,11 +266,13 @@ def _visit_expression(node, expected_type, context, warnings):
         signature = function_type.signature
         instance = (function_type.instance
                     if isinstance(function_type, Function) else None)
-        offset = 1 if instance is not None else 0
+        offset = 1 if (instance is not None
+                       or isinstance(function_type, Class)) else 0
 
         argument_scope = Scope()
         if instance is not None:
-            argument_scope.add(Symbol(signature.names[0], instance))
+            self_symbol = Symbol(signature.names[0], instance)
+            argument_scope.add(self_symbol)
 
         # make sure all required arguments are specified
         if node.starargs is None and node.kwargs is None:

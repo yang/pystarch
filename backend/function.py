@@ -207,7 +207,11 @@ def construct_function_type(functiondef_node, visitor, instance=None):
     body = functiondef_node.body
     first_evaluator = FunctionEvaluator(body, visitor)
     visitor.context().clear_constraints()
-    return_type, _ = first_evaluator.evaluate(signature.generic_scope())
+    argument_scope = signature.generic_scope()
+    if instance is not None:
+        self_symbol = Symbol(signature.names[0], instance)
+        argument_scope.add(self_symbol)
+    return_type, _ = first_evaluator.evaluate(argument_scope)
     signature.constrain_types(visitor.context().get_constraints())
     evaluator = FunctionEvaluator(body, visitor.clone())
     return Function(signature, return_type, evaluator)
