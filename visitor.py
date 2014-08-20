@@ -115,6 +115,14 @@ class ScopeVisitor(ast.NodeVisitor):
                     default_type != annotated_type):
                 self.warn('default-argument-type-error', node, name)
 
+    def _check_return(self, return_type, static_value=None):
+        previous_type = self._context.get_type()
+        new_type = (unify_types([previous_type, return_type])
+                    if previous_type is not None else return_type)
+        value = (static_value or UnknownValue() if previous_type is None else
+                    UnknownValue())
+        self._context.set_return(Symbol('return', new_type, value))
+
     def check_return(self, node, is_yield=False):
         if node.value is None:
             value_type = NoneType()
@@ -122,13 +130,7 @@ class ScopeVisitor(ast.NodeVisitor):
             value_type = self.check_type(node.value, Unknown())
         return_type = List(value_type) if is_yield else value_type
         static_value = self.evaluate(node.value)
-        previous_type = self._context.get_type()
-        if previous_type is None:
-            self._context.set_return(Symbol(
-                'return', return_type, static_value))
-            return
-        new_type = unify_types([previous_type, return_type])
-        self._context.set_return(Symbol('return', new_type, static_value))
+        self._check_return(return_type, static_value)
 
     def visit_Return(self, node):
         self.check_return(node)
@@ -166,10 +168,12 @@ class ScopeVisitor(ast.NodeVisitor):
             self.visit(stmt)
         scope = self.end_scope()
         self.end_scope()        # inferences scope
+        return_type = scope.get_type()
+        if return_type is not None:
+            self._check_return(return_type, scope.get_value())
         return scope
 
     def visit_If(self, node):
-        self.visit(node.test)   # is this necessary?
         self.check_type(node.test, Bool())
         test_value = static_evaluate(node.test, self.context())
         if not isinstance(test_value, UnknownValue):
@@ -177,6 +181,15 @@ class ScopeVisitor(ast.NodeVisitor):
 
         ext_ctx = self.context()
         if_inferences, else_inferences = maybe_inferences(node.test, ext_ctx)
+
+        # don't visit unreachable code
+        if test_value is True:
+            self._visit_branch(node.body, if_inferences)
+            return
+        if test_value is False:
+            self._visit_branch(node.orelse, else_inferences)
+            return
+
         if_scope = self._visit_branch(node.body, if_inferences)
         else_scope = self._visit_branch(node.orelse, else_inferences)
 
@@ -193,15 +206,6 @@ class ScopeVisitor(ast.NodeVisitor):
             if isinstance(unified_type, Unknown):
                 if not any(isinstance(x, Unknown) for x in types):
                     self.warn('conditional-type', node, name)
-
-        return_types = [if_scope.get_type() or Unknown(),
-                        else_scope.get_type() or Unknown()]
-        unified_return_type = unify_types(return_types)
-        self._context.set_return(Symbol('return', unified_return_type,
-            UnknownValue()))
-        if isinstance(unified_return_type, Unknown):
-            if not any(isinstance(x, Unknown) for x in return_types):
-                self.warn('conditional-return-type', node)
 
     def visit_While(self, node):
         self.check_type(node.test, Bool())

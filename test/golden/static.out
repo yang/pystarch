@@ -1,12 +1,11 @@
-f Function(x: Num -> Maybe(Num))
+f Function(x: Num -> Num)
 x01 Num 1
 x02 Num 3
 x03 Bool False
 x04 Bool False
 x05 Bool True
-x06 Maybe(Num)
-x07 Bool
-x08 Num
+x06 Num
+x07 Bool True
 
 testcases/static.py:9 constant-if-condition "If"
-testcases/static.py:20 type-error "x06" (NoneType vs Num)
+testcases/static.py:17 constant-if-condition "If"

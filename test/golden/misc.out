@@ -1,16 +1,16 @@
 MyClass MyClass None
 a List(Num) [1, 2, 3]
-another_function Function( -> Maybe(Num))
+another_function Function( -> NoneType)
 b Num
 c Num
-func Function( -> Union(Str,List(Unknown)))
+func Function( -> Str)
 func2 Function( -> Num)
 globe Num 1
 instance Instance(MyClass)
 my_function Function(sam: Num, maxi: Unknown -> Num)
 types Function(, args: Tuple, kwargs: Dict -> Function(x: Unknown -> Unknown))
-v Union(Str,List(Unknown))
-w Maybe(Num)
+v Str
+w NoneType None
 x Unknown
 y List(Num)
 z Num
