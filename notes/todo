@@ -1,6 +1,7 @@
 
 High Priority
 =============
+Make function.py not depend on expr.py
 When clonining visitor, have to clone context too
 Negative slice indices, slice step size (for tuple type evaluation)
 Make an HTML debugging display just like pysonar

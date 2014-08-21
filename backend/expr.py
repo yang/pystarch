@@ -108,6 +108,12 @@ def _visit_expression(node, expected_type, context, warnings):
                 recur(node.left, Num())
                 recur(node.right, Num())
                 return Num()
+            if (isinstance(expected_type, Num)
+                    and type_subset(Num(), left_probe)
+                    and type_subset(Num(), right_probe)):
+                recur(node.left, Num())
+                recur(node.right, Num())
+                return Num()
             recur(node.left, union_type)
             recur(node.right, union_type)
             return union_type
