@@ -1,6 +1,7 @@
 
 High Priority
 =============
+Import statements with dots
 When clonining visitor, have to clone context too
 Negative slice indices, slice step size (for tuple type evaluation)
 Make an HTML debugging display just like pysonar
@@ -15,7 +16,6 @@ an intermediate variable, it will automatically recursively constrain all the
 linked expressions. This might enter an infinite loop though. Maybe we could
 avoid infinite loops as long as we avoid recurring when the constraint does
 not cause any tightening.
-from a.b import module
 Handle circular imports properly
 Tuple and subscript assignment
 

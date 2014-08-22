@@ -3,6 +3,11 @@ from type_objects import NoneType, Maybe, Unknown, Union, List, Set, \
 from itertools import tee, izip
 
 
+class UnknownValue(object):
+    def __str__(self):
+        return self.__class__.__name__
+
+
 def pairwise(iterable):
     a, b = tee(iterable)
     next(b, None)

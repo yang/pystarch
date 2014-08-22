@@ -3,3 +3,5 @@ mime_text Instance(object)
 my_integer Num
 my_other_integer Num
 subprocess Instance(object)
+text Instance(object)
+z Function(msg: Unknown -> NoneType)

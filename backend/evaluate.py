@@ -1,17 +1,12 @@
 import expr
-import util
 from functools import partial
 from operators import get_operator_function
 from type_objects import Instance, Unknown
+from util import UnknownValue, comparable_types
 
 
 def get_token(node):
     return node.__class__.__name__
-
-
-class UnknownValue(object):
-    def __str__(self):
-        return self.__class__.__name__
 
 
 def operator_evaluate(operator, *args):
@@ -30,10 +25,10 @@ def comparison_evaluate(operator, left, right):
     if any(isinstance(x, Unknown) for x in [left_type, right_type]):
         return UnknownValue()
     if operator in ['Is', 'Eq']:
-        if not util.comparable_types([left_type, right_type]):
+        if not comparable_types([left_type, right_type]):
             return False
     if operator in ['IsNot', 'NotEq']:
-        if not util.comparable_types([left_type, right_type]):
+        if not comparable_types([left_type, right_type]):
             return True
     if any(isinstance(x, UnknownValue) for x in [left_value, right_value]):
         return UnknownValue()

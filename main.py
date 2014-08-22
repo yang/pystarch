@@ -7,7 +7,7 @@ import meta
 import cPickle as pickle
 from hashlib import sha256
 from visitor import ScopeVisitor
-from backend import Scope, Symbol, UnknownValue, Instance, Unknown, Context
+from backend import Scope, Symbol, Instance, Context
 
 
 NAME = 'strictpy'
@@ -107,13 +107,13 @@ def import_chain(fully_qualified_name, asname, import_scope, current_filepath,
             import_type, filepath, is_package = import_module(
                 name, filepath, imported)
             if asname is None:
-                scope.add(Symbol(name, import_type, UnknownValue()))
+                scope.add(Symbol(name, import_type))
             scope = import_type.attributes
         else:
             import_type = scope.get_type(name)
             scope = None
     if asname is not None:
-        import_scope.add(Symbol(asname, import_type, UnknownValue()))
+        import_scope.add(Symbol(asname, import_type))
     return import_type
 
 
@@ -123,12 +123,6 @@ def get_path_for_level(filepath, level):
     if level > 0:
         filepath = os.path.join(filepath, '__init__.py')
     return filepath
-
-
-# only for "from x import y" syntax
-def import_from_chain(fully_qualified_name, level, current_filepath, imported):
-    return import_chain(fully_qualified_name, None, Scope(),
-                        get_path_for_level(current_filepath, level), imported)
 
 
 class ModuleVisitor(ScopeVisitor):
@@ -149,21 +143,32 @@ class ModuleVisitor(ScopeVisitor):
                           alias.name + ': ' + str(failure))
 
     def visit_ImportFrom(self, node):
-        try:
-            module = import_from_chain(node.module, node.level, self._filepath,
-                                       self._imported)
-        except RuntimeError as failure:
-            self.warn('import-failed', node, '{0}: {1}'.format(
-                node.module, failure))
-            return
-        if not isinstance(module, Instance):
-            self.warn('invalid-import', node, node.module)
-            return
+        filepath = get_path_for_level(self._filepath, node.level)
+        parts = node.module.split('.') if node.module else [None]
+        for part in parts:
+            try:
+                import_type, filepath, is_package = import_module(
+                    part, filepath, self._imported)
+            except RuntimeError as failure:
+                self.warn('import-failed', node, '{0}: {1}'.format(
+                    node.module, failure))
+                return
 
         for alias in node.names:
             symbol_name = alias.asname or alias.name
-            symbol_type = module.attributes.get_type(alias.name) or Unknown()
-            self._context.add(Symbol(symbol_name, symbol_type, UnknownValue()))
+            if is_package:
+                try:
+                    symbol_type, _, _ = import_module(alias.name, filepath,
+                                                      self._imported)
+                except RuntimeError:
+                    self._warnings.warn('name-not-found', alias.name)
+                    continue
+            else:
+                symbol_type = import_type.attributes.get_type(alias.name)
+                if symbol_type is None:
+                    self._warnings.warn('name-not-found', alias.name)
+                    continue
+            self._context.add(Symbol(symbol_name, symbol_type))
 
 
 def builtin_context():

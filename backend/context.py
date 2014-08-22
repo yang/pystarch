@@ -1,7 +1,6 @@
 import copy
 from type_objects import NoneType, Bool
-from evaluate import UnknownValue
-from util import type_intersection
+from util import type_intersection, UnknownValue
 
 # Tricky: need to support obj1.obj2.x where obj2 is an instance
 # of a class that may not be defined in the current scope
@@ -27,7 +26,7 @@ def builtin_scope():
 
 
 class Symbol(object):
-    def __init__(self, name, type_=None, value=None):
+    def __init__(self, name, type_=None, value=UnknownValue()):
         assert name is not None
         assert type_ is not None
         self._name = None

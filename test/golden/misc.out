@@ -1,4 +1,4 @@
-MyClass MyClass None
+MyClass MyClass
 a List(Num) [1, 2, 3]
 another_function Function( -> NoneType)
 b Num

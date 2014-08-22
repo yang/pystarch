@@ -99,7 +99,7 @@ class ScopeVisitor(ast.NodeVisitor):
                                warnings=self._warnings)
         function_type = construct_function_type(node, visitor,
                                                 self._class_instance)
-        self._context.add(Symbol(node.name, function_type, UnknownValue()))
+        self._context.add(Symbol(node.name, function_type))
 
         # now check that all the types are consistent between
         # the default types, annotated types, and constrained types
@@ -196,7 +196,7 @@ class ScopeVisitor(ast.NodeVisitor):
         for name in common:
             types = [if_scope.get_type(name), else_scope.get_type(name)]
             unified_type = unify_types(types)
-            self._context.add(Symbol(name, unified_type, UnknownValue()))
+            self._context.add(Symbol(name, unified_type))
             if isinstance(unified_type, Unknown):
                 if not any(isinstance(x, Unknown) for x in types):
                     self.warn('conditional-type', node, name)
