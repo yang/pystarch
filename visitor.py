@@ -35,8 +35,8 @@ class ScopeVisitor(ast.NodeVisitor):
     def report(self):
         return self.scope(), self.warnings(), self.annotations()
 
-    def begin_scope(self):
-        self._context.begin_scope()
+    def begin_scope(self, scope=None):
+        self._context.begin_scope(scope)
 
     def end_scope(self):
         return self._context.end_scope()
@@ -156,14 +156,12 @@ class ScopeVisitor(ast.NodeVisitor):
         # second for symbols that are assigned within the branch
         if body is None:
             return Scope()
-        self.begin_scope()  # inferences scope
-        for name, type_ in inferences.iteritems():
-            self._context.add(Symbol(name, type_, UnknownValue()))
+        self.begin_scope(Scope(inferences))
         self.begin_scope()
         for stmt in body:
             self.visit(stmt)
         scope = self.end_scope()
-        self.end_scope()        # inferences scope
+        self.end_scope()
         return_type = scope.get_type()
         if return_type is not None:
             self._check_return(return_type, scope.get_value())

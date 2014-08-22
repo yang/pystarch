@@ -1,3 +1,5 @@
+a Num
+b Num
 x Maybe(Num)
 y Maybe(Num)
 z Num
@@ -6,3 +8,4 @@ testcases/inference.py:2 undefined "random" (random)
 testcases/inference.py:3 undefined "random" (random)
 testcases/inference.py:6 type-error "x" (Maybe(Num) vs Num)
 testcases/inference.py:6 type-error "y" (Maybe(Num) vs Num)
+testcases/inference.py:11 type-error "x" (Maybe(Num) vs Num)

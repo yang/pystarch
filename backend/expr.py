@@ -6,6 +6,7 @@ from evaluate import static_evaluate, UnknownValue
 from util import unify_types, type_intersection, type_subset
 from assign import assign
 from function import construct_function_type
+from inference import maybe_inferences
 
 
 def get_token(node):
@@ -150,9 +151,14 @@ def _visit_expression(node, expected_type, context, warnings):
         return construct_function_type(node, LambdaVisitor(context))
     if token == 'IfExp':
         recur(node.test, Bool())
-        types = [recur(node.body, expected_type),
-                 recur(node.orelse, expected_type)]
-        return unify_types(types)
+        if_inferences, else_inferences = maybe_inferences(node.test, context)
+        context.begin_scope(Scope(if_inferences))
+        body_type = recur(node.body, expected_type)
+        context.end_scope()
+        context.begin_scope(Scope(else_inferences))
+        else_type = recur(node.orelse, expected_type)
+        context.end_scope()
+        return unify_types([body_type, else_type])
     if token == 'Dict':
         key_type = unify_types([recur(key, Unknown()) for key in node.keys])
         value_type = unify_types([recur(value, Unknown())

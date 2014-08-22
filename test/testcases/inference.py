@@ -6,3 +6,7 @@ if x is None or y is None:
     z = x + y
 else:
     z = x * y
+
+
+a = x + 1 if x is not None or y is not None else 1
+b = x + 1 if x is not None and y is not None else 1

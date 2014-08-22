@@ -70,9 +70,12 @@ class Symbol(object):
 
 
 class Scope(object):
-    def __init__(self):
+    def __init__(self, init_dict=None):
         self._symbols = {}
         self._return = None
+        if init_dict is not None:
+            for name, type_ in init_dict.iteritems():
+                self.add(Symbol(name, type_, UnknownValue()))
 
     def __hash__(self):
         return hash(frozenset(self._symbols.items())) + hash(self._return)
@@ -138,8 +141,8 @@ class Context(object):
         scope."""
         return Context([scope for scope in self._scope_layers])
 
-    def begin_scope(self):
-        self._scope_layers.append(Scope())
+    def begin_scope(self, scope=None):
+        self._scope_layers.append(Scope() if scope is None else scope)
 
     def end_scope(self):
         if len(self._scope_layers) <= 1:

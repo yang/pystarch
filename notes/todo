@@ -1,12 +1,10 @@
 
 High Priority
 =============
-Make function.py not depend on expr.py
 When clonining visitor, have to clone context too
 Negative slice indices, slice step size (for tuple type evaluation)
 Make an HTML debugging display just like pysonar
 EqualityMixin: other.__class__ == self.__class__
-Unwrap maybe in comprehensions with "if x is not None" conditions
 Use a code coverage tool to make sure everything is covered by tests
 Support calling functions that are defined later (needed for mutual recursion)
 Improve function call argument error checking
