@@ -50,7 +50,10 @@ def visit_expression(node, expected_type, context, warnings=NullWarnings()):
         warnings.warn(node, 'type-error', details)
     return result_type
 
-
+# Example: len(2*2) we can either have an error that len does not accept
+# a numeric argument, or that the first parameter of the asterisk should
+# have been a string. The former seems more intuitive, so we should check
+# for the expected type implications only after doing constructive checks.
 def _visit_expression(node, expected_type, context, warnings):
     recur = partial(visit_expression, context=context, warnings=warnings)
     probe = partial(expression_type, context=context)
@@ -74,11 +77,12 @@ def _visit_expression(node, expected_type, context, warnings):
                 else:
                     return Unknown()
             union_type = Union(Num(), Str(), List(Unknown()))
-            expected_intersect = type_intersection(expected_type, union_type)
-            subtype_intersect = type_intersection(left_probe, right_probe)
-            full_intersect = type_intersection(expected_intersect,
-                                               subtype_intersect)
-            intersect = full_intersect or expected_intersect or union_type
+            left_intersect = type_intersection(left_probe, union_type)
+            right_intersect = type_intersection(right_probe, union_type)
+            sub_intersect = type_intersection(left_intersect, right_intersect)
+            full_intersect = type_intersection(expected_type, sub_intersect)
+            intersect = (full_intersect or sub_intersect or left_intersect
+                         or right_intersect or union_type)
             recur(node.left, intersect)
             recur(node.right, intersect)
             return intersect
@@ -87,39 +91,46 @@ def _visit_expression(node, expected_type, context, warnings):
             expected_intersect = type_intersection(expected_type, union_type)
             left_intersect = type_intersection(probe(node.left), union_type)
             right = recur(node.right, Num())
-            if isinstance(expected_intersect, Str):
-                recur(node.left, Str())
-                return Str()
-            elif isinstance(expected_intersect, Num):
+            if isinstance(left_intersect, Num):
                 recur(node.left, Num())
                 return Num()
             elif isinstance(left_intersect, Str):
                 recur(node.left, Str())
                 return Str()
-            elif isinstance(left_intersect, Num):
+            elif isinstance(expected_intersect, Num):
                 recur(node.left, Num())
                 return Num()
+            elif isinstance(expected_intersect, Str):
+                recur(node.left, Str())
+                return Str()
             else:
                 recur(node.left, union_type)
                 return union_type
         elif operator == 'Mod':
             # num % num OR str % unknown
-            left_probe = probe(node.left)
-            right_probe = probe(node.right)
-            if (type_subset(Str(), left_probe) and
-                    not type_subset(Num(), left_probe)):
-                recur(node.left, Str())
-                recur(node.right, Unknown())
-                return Str()
-            if (type_subset(Num(), left_probe) and
-                    not type_subset(Str(), left_probe)):
+            union_type = Union(Num(), Str())
+            expected_intersect = type_intersection(expected_type, union_type)
+            left_intersect = type_intersection(probe(node.left), union_type)
+            if isinstance(left_intersect, Num):
                 recur(node.left, Num())
                 recur(node.right, Num())
                 return Num()
-            union_type = Union(Num(), Str())
-            recur(node.left, union_type)
-            recur(node.right, Unknown())
-            return union_type
+            elif isinstance(left_intersect, Str):
+                recur(node.left, Str())
+                recur(node.right, Unknown())
+                return Str()
+            elif isinstance(expected_intersect, Num):
+                recur(node.left, Num())
+                recur(node.right, Num())
+                return Num()
+            elif isinstance(expected_intersect, Str):
+                recur(node.left, Str())
+                recur(node.right, Unknown())
+                return Str()
+            else:
+                recur(node.left, union_type)
+                recur(node.right, Unknown())
+                return union_type
         else:
             recur(node.left, Num())
             recur(node.right, Num())
