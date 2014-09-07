@@ -205,7 +205,10 @@ class iter(object):
         return self
 
 def len(s):
-    return number
+    result = 0
+    for element in s:
+        result += 1
+    return result
 
 def list(iterable):
     return [x for x in iterable]

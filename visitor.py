@@ -4,7 +4,8 @@ from warning import Warnings
 from backend import visit_expression, assign, unify_types, ExtendedContext, \
     Scope, static_evaluate, UnknownValue, NoneType, Bool, List, Instance, \
     Class, Unknown, maybe_inferences, Symbol, type_subset, Context, \
-    construct_function_type, FunctionSignature, ClassEvaluator
+    construct_function_type, FunctionSignature, ClassEvaluator, Union, Set, \
+    Dict, Str
 
 
 class ScopeVisitor(ast.NodeVisitor):
@@ -208,6 +209,9 @@ class ScopeVisitor(ast.NodeVisitor):
     def visit_For(self, node):
         # Python doesn't create a scope for "for", but we will
         # treat it as if it did because it should
+        union_type = Union(List(Unknown()), Set(Unknown()),
+                           Dict(Unknown(), Unknown()), Str())
+        self.check_type(node.iter, union_type)
         self.begin_scope()
         self.check_assign(node, node.target, node.iter, generator=True)
         self.generic_visit(node)

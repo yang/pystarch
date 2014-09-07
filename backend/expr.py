@@ -211,12 +211,14 @@ def _visit_expression(node, expected_type, context, warnings):
             left_probe = probe(node.left)
             right_probe = probe(node.comparators[0])
             union_type = Union(List(left_probe), Set(left_probe),
-                               Dict(left_probe, Unknown()))
+                               Dict(left_probe, Unknown()), Str())
             recur(node.comparators[0], union_type)
             if isinstance(right_probe, (List, Set)):
                 recur(node.left, right_probe.item_type)
-            if isinstance(right_probe, Dict):
+            elif isinstance(right_probe, Dict):
                 recur(node.left, right_probe.key_type)
+            else:
+                recur(node.left, Unknown())
         return Bool()
     if token == 'Call':
         function_type = recur(node.func, Unknown())

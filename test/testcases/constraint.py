@@ -19,3 +19,6 @@ def h(x):
 
 def j(x):
     return x[0]
+
+def k(a, b):
+    return len(a * b)
