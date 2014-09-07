@@ -1,2 +1,2 @@
 f Function(a: Num -> Union(Num,Str))
-x Union(Num,Str)
+x Num

@@ -1,6 +1,7 @@
 
 High Priority
 =============
+Fix expr evaluation when expected_type makes a difference
 Import statements with dots
 When clonining visitor, have to clone context too
 Negative slice indices, slice step size (for tuple type evaluation)

@@ -1,6 +1,6 @@
 a NoneType None
 b Num
 c Maybe(Num)
-f Function(a: Num -> Maybe(Union(Num,Str)))
-g Function(a: Num -> Maybe(Union(Num,Str)))
-h Function(a: Num -> Maybe(Union(Num,Str)))
+f Function(a: Num -> Maybe(Num))
+g Function(a: Num -> Maybe(Num))
+h Function(a: Num -> Maybe(Num))

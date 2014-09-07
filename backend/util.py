@@ -92,6 +92,10 @@ def comparable_types(types):
 
 
 def type_subset(a, b):
+    if b is None:
+        return False
+    if a is None:
+        return True
     if isinstance(b, Unknown):
         return True
     if isinstance(a, Unknown):

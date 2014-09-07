@@ -1,6 +1,6 @@
 x01 Str aaaaa
 x02 Str
-x03 Str aaaaa
+x03 Num aaaaa
 x04 Union(Num,Str)
 x05 Bool False
 x06 Bool True
@@ -14,7 +14,8 @@ x13 Tuple(Num,Num,Num,Num) (1, 2, 3, 4)
 x14 Str
 
 testcases/operators.py:2 type-error "Str" (Str vs Num)
-testcases/operators.py:4 type-error "List" (List(Unknown) vs Union(Num,Str))
+testcases/operators.py:3 type-error "Str" (Str vs Num)
+testcases/operators.py:4 type-error "List" (List(Unknown) vs Num)
 testcases/operators.py:4 type-error "List" (List(Unknown) vs Union(Num,Str))
 testcases/operators.py:6 type-error "List" (List(Unknown) vs Bool)
 testcases/operators.py:7 type-error "Num" (Num vs Bool)

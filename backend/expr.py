@@ -74,50 +74,34 @@ def _visit_expression(node, expected_type, context, warnings):
                 else:
                     return Unknown()
             union_type = Union(Num(), Str(), List(Unknown()))
-            left_intersect = type_intersection(left_probe, union_type)
-            right_intersect = type_intersection(right_probe, union_type)
-            intersect = type_intersection(left_intersect, right_intersect)
-            if intersect is not None:
-                recur(node.left, intersect)
-                recur(node.right, intersect)
-                return intersect
-            elif left_intersect is not None:
-                recur(node.left, left_intersect)
-                recur(node.right, left_intersect)
-                return left_intersect
-            elif right_intersect is not None:
-                recur(node.left, right_intersect)
-                recur(node.right, right_intersect)
-                return right_intersect
-            else:
-                recur(node.left, union_type)
-                recur(node.right, union_type)
-                return union_type
+            expected_intersect = type_intersection(expected_type, union_type)
+            subtype_intersect = type_intersection(left_probe, right_probe)
+            full_intersect = type_intersection(expected_intersect,
+                                               subtype_intersect)
+            intersect = full_intersect or expected_intersect or union_type
+            recur(node.left, intersect)
+            recur(node.right, intersect)
+            return intersect
         elif operator == 'Mult':
             union_type = Union(Num(), Str())
-            left_probe = probe(node.left)
-            right_probe = probe(node.right)
-            if isinstance(left_probe, Str):
+            expected_intersect = type_intersection(expected_type, union_type)
+            left_intersect = type_intersection(probe(node.left), union_type)
+            right = recur(node.right, Num())
+            if isinstance(expected_intersect, Str):
                 recur(node.left, Str())
-                recur(node.right, Num())
                 return Str()
-            if isinstance(right_probe, Str):
+            elif isinstance(expected_intersect, Num):
                 recur(node.left, Num())
-                recur(node.right, Str())
+                return Num()
+            elif isinstance(left_intersect, Str):
+                recur(node.left, Str())
                 return Str()
-            if isinstance(left_probe, Num) and isinstance(right_probe, Num):
+            elif isinstance(left_intersect, Num):
                 recur(node.left, Num())
-                recur(node.right, Num())
                 return Num()
-            if (isinstance(expected_type, Num)
-                    and type_subset(Num(), left_probe)
-                    and type_subset(Num(), right_probe)):
-                recur(node.left, Num())
-                recur(node.right, Num())
-                return Num()
-            recur(node.left, union_type)
-            recur(node.right, union_type)
-            return union_type
+            else:
+                recur(node.left, union_type)
+                return union_type
         elif operator == 'Mod':
             # num % num OR str % unknown
             left_probe = probe(node.left)
