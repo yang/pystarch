@@ -24,6 +24,7 @@ Medium Priority
 ===============
 Check that all assigned symbols are used at least once
 Check that function return values are not discarded
+Check for unreachable code
 
 Low Priority
 ============
