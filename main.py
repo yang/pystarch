@@ -198,9 +198,13 @@ def analysis(source, filepath=None, context=None):
 
 
 def main():
-    filepath = sys.argv[1]
-    with open(filepath) as source_file:
-        source = source_file.read()
+    if len(sys.argv) <= 1:
+        filepath = ''
+        source = sys.stdin.read()
+    else:
+        filepath = sys.argv[1]
+        with open(filepath) as source_file:
+            source = source_file.read()
     #sys.stdout.write(analysis(source, filepath, Context()))
     sys.stdout.write(analysis(source, filepath))
 
