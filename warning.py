@@ -22,6 +22,7 @@ def show_node(node):
 
 class NodeWarning(object):
     def __init__(self, filepath, node, category, details=None):
+        assert not isinstance(node, str)
         self.filepath = filepath
         self.category = category
         self.node = node

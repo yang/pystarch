@@ -54,7 +54,8 @@ class ScopeVisitor(ast.NodeVisitor):
     def check_type(self, node, expected_type=Unknown()):
         computed_type = visit_expression(node, expected_type, self.context(),
                                          self._warnings)
-        if not type_subset(computed_type, expected_type):
+        if (not type_subset(computed_type, expected_type)
+                and not isinstance(computed_type, Unknown)):
             details = '{0} vs {1}'.format(computed_type, expected_type)
             self.warn('type-error', node, details)
         return computed_type

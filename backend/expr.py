@@ -286,10 +286,16 @@ def _visit_expression(node, expected_type, context, warnings):
         return Str()
     if token == 'Attribute':
         value_type = recur(node.value, Unknown())
+        if isinstance(value_type, Unknown):
+            return Unknown()
         if not isinstance(value_type, Instance):
             warnings.warn(node, 'not-an-instance')
             return Unknown()
-        return value_type.attributes.get_type(node.attr) or Unknown()
+        attr_type = value_type.attributes.get_type(node.attr)
+        if attr_type is None:
+            warnings.warn(node, 'not-a-member')
+            return Unknown()
+        return attr_type
     if token == 'Subscript':
         union_type = Union(List(Unknown()), Dict(Unknown(), Unknown()),
                            BaseTuple())

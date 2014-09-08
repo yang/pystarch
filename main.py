@@ -7,7 +7,7 @@ import meta
 import cPickle as pickle
 from hashlib import sha256
 from visitor import ScopeVisitor
-from backend import Scope, Symbol, Instance, Context
+from backend import Scope, Symbol, Instance, Context, Unknown
 
 
 NAME = 'strictpy'
@@ -71,8 +71,13 @@ def import_source(import_name, current_filepath):
         raise RuntimeError('Unrecognized extension: ' + module_path)
 
 
-def import_module(name, current_filepath, imported):
-    source, filepath, is_package = import_source(name, current_filepath)
+def import_module(name, current_filepath, imported, warn):
+    try:
+        source, filepath, is_package = import_source(name, current_filepath)
+    except RuntimeError as error:
+        warn('import-failed', name + ' ' + current_filepath + '\n' + str(error))
+        return Unknown(), current_filepath, False
+
     cache_filename = sha256(filepath + '~' + source).hexdigest()
     cache_filepath = os.path.join(os.sep, 'var', 'cache', NAME,
                                   __version__, cache_filename)
@@ -95,20 +100,22 @@ def import_module(name, current_filepath, imported):
 
 
 def import_chain(fully_qualified_name, asname, import_scope, current_filepath,
-                 imported):
+                 imported, warn):
     scope = import_scope
     filepath = current_filepath
     is_package = True
     names = fully_qualified_name.split('.') if fully_qualified_name else [None]
     for name in names:
         if scope is None:
-            raise RuntimeError('Cannot import ' + fully_qualified_name)
+            warn('import-error', fully_qualified_name)
+            return Unknown()
         if is_package:
             import_type, filepath, is_package = import_module(
-                name, filepath, imported)
+                name, filepath, imported, warn)
             if asname is None:
                 scope.add(Symbol(name, import_type))
-            scope = import_type.attributes
+            scope = (import_type.attributes if isinstance(import_type, Instance)
+                     else None)
         else:
             import_type = scope.get_type(name)
             scope = None
@@ -134,40 +141,34 @@ class ModuleVisitor(ScopeVisitor):
 
     def visit_Import(self, node):
         scope = self._context.get_top_scope()
+        warn = lambda category, details: self._warnings.warn(
+                                            node, category, details)
         for alias in node.names:
-            try:
-                import_chain(alias.name, alias.asname, scope, self._filepath,
-                             self._imported)
-            except RuntimeError as failure:
-                self.warn('import-failed', node,
-                          alias.name + ': ' + str(failure))
+            import_chain(alias.name, alias.asname, scope, self._filepath,
+                         self._imported, warn)
 
     def visit_ImportFrom(self, node):
         filepath = get_path_for_level(self._filepath, node.level)
         parts = node.module.split('.') if node.module else [None]
+        warn = lambda category, details: self._warnings.warn(
+                                            node, category, details)
         for part in parts:
-            try:
-                import_type, filepath, is_package = import_module(
-                    part, filepath, self._imported)
-            except RuntimeError as failure:
-                self.warn('import-failed', node, '{0}: {1}'.format(
-                    node.module, failure))
-                return
+            import_type, filepath, is_package = import_module(
+                part, filepath, self._imported, warn)
 
         for alias in node.names:
             symbol_name = alias.asname or alias.name
             if is_package:
-                try:
-                    symbol_type, _, _ = import_module(alias.name, filepath,
-                                                      self._imported)
-                except RuntimeError:
-                    self._warnings.warn('name-not-found', alias.name)
-                    continue
+                symbol_type, _, _ = import_module(alias.name, filepath,
+                                                  self._imported, warn)
             else:
-                symbol_type = import_type.attributes.get_type(alias.name)
-                if symbol_type is None:
-                    self._warnings.warn('name-not-found', alias.name)
-                    continue
+                if isinstance(import_type, Instance):
+                    symbol_type = import_type.attributes.get_type(alias.name)
+                    if symbol_type is None:
+                        warn('name-not-found', alias.name)
+                        continue
+                else:
+                    symbol_type = Unknown()
             self._context.add(Symbol(symbol_name, symbol_type))
 
 

@@ -26,20 +26,21 @@ def builtin_scope():
 
 
 class Symbol(object):
-    def __init__(self, name, type_=None, value=UnknownValue()):
+    def __init__(self, name, type_=None, value=UnknownValue(),
+                 assign_expression=None):
         assert name is not None
         assert type_ is not None
         self._name = None
         self._type = None
         self._value = None
         self._assign_expression = None
-        self.assign(name, type_, value)
+        self.assign(name, type_, value, assign_expression)
 
-    def assign(self, name, type_, value):
+    def assign(self, name, type_, value, assign_expression):
         self._name = name
         self._type = type_
         self._value = value if type_ != NoneType() else None
-        self._assign_expression = None
+        self._assign_expression = assign_expression
 
     def get_name(self):
         return self._name
@@ -49,18 +50,6 @@ class Symbol(object):
 
     def get_value(self):
         return self._value
-
-    def add_constraint(self, type_, recur):
-        new_type = type_intersection(self._type, type_)
-        if new_type is not None:
-            # problem: do we have to maintain the definition context
-            # for every symbol? that's way too much memory
-            if self._assign_expression is not None:
-                recur(self._assign_expression, new_type)
-            self._type = new_type
-            return new_type
-        else:
-            return None
 
     def __str__(self):
         if isinstance(self._value, UnknownValue):
