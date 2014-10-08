@@ -11,12 +11,27 @@ def analyze(source):
     return (stdout, True) if process.returncode == 0 else (stderr, False)
 
 
+def format_output(output):
+    mapping = {}
+    lines = output.splitlines()
+    start = lines.index('')
+    for line in lines[start+1:]:
+        line_number = int(line.split()[0].split(':')[1])
+        line_text = line[line.index(' ')+1:]
+        mapping[line_number] = (mapping[line_number] + '; ' + line_text
+                                if line_number in mapping else line_text)
+    max_line = max(mapping.keys())
+    result = ''
+    for i in range(1, max_line + 1):
+        result += mapping.get(i, '') + '\n'
+    return result
+
+
 @app.route('/html', methods=['POST'])
 def html():
     source = request.form.get('source')
     output, success = analyze(source)
-    result = output.replace('\n', '\n<br/>\n')
-    return result if success else (result, 400)
+    return format_output(output) if success else (output, 400)
 
 
 @app.route('/')
@@ -25,4 +40,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', port=4000, debug=True)

@@ -1,13 +1,26 @@
 <html>
 <head>
 <title>PyStarch</title>
+<script type="text/javascript" src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script type="text/javascript" src="/static/server.js"></script>
+<style>
+textarea {
+    resize: none;
+    outline: none;
+    background-color: black;
+    color: #DDD;
+    font-family: courier, monospace;
+    font-weight: bold;
+}
+</style>
 </head>
 <body>
 <form action="/html" method="POST">
-<textarea rows="20" cols="80" name="source" placeholder="Insert python source code here">
+<textarea id="input" rows="20" cols="80" name="source" placeholder="Insert python source code here">
 </textarea>
+<textarea id="output" rows="20" cols="80" disabled placeholder="PyStarch output will be displayed here"></textarea>
 <br/>
-<input type="submit" value="Submit">
+<input type="submit" value="Submit" onclick="update(); return false;"/>
 </form>
 </body>
 </html>
