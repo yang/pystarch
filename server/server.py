@@ -13,18 +13,19 @@ def analyze(source):
 
 def format_output(output):
     mapping = {}
-    lines = output.splitlines()
-    start = lines.index('')
-    for line in lines[start+1:]:
+    for line in output.splitlines():
         line_number = int(line.split()[0].split(':')[1])
         line_text = line[line.index(' ')+1:]
         mapping[line_number] = (mapping[line_number] + '; ' + line_text
                                 if line_number in mapping else line_text)
-    max_line = max(mapping.keys())
     result = ''
-    for i in range(1, max_line + 1):
-        result += mapping.get(i, '') + '\n'
-    return result
+    if len(mapping) == 0:
+        return result
+    else:
+        max_line = max(mapping.keys())
+        for i in range(1, max_line + 1):
+            result += mapping.get(i, '') + '\n'
+        return result
 
 
 @app.route('/html', methods=['POST'])

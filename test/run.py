@@ -17,7 +17,7 @@ def main():
             continue
         with open(filepath) as source_file:
             source = source_file.read()
-        output = analysis(source, filepath)
+        output = analysis(source, filepath, show_types=True)
         with open(golden_path) as golden_file:
             golden_output = golden_file.read()
         if output == golden_output:

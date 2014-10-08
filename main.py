@@ -5,6 +5,7 @@ import imp
 import marshal
 import meta
 import cPickle as pickle
+import optparse
 from hashlib import sha256
 from visitor import ScopeVisitor
 from backend import Scope, Symbol, Instance, Context, Unknown
@@ -189,24 +190,31 @@ def analyze(source, filepath=None, context=None, imported=[]):
     return visitor.report()
 
 
-def analysis(source, filepath=None, context=None):
+def analysis(source, filepath=None, context=None, show_types=False):
     scope, warnings, _ = analyze(source, filepath, context)
     warning_output = str(warnings)
-    scope_output = str(scope)
-    separator = '\n' if warning_output and scope_output else ''
-    return scope_output + separator + warning_output
+    if show_types: 
+        scope_output = str(scope)
+        separator = '\n' if warning_output and scope_output else ''
+        return scope_output + separator + warning_output
+    else:
+        return warning_output
 
 
 def main():
-    if len(sys.argv) <= 1:
+    parser = optparse.OptionParser()
+    parser.add_option('-t', '--types', dest='show_types', default=False,
+                      help='Show types of symbols defined in top scope')
+    options, args = parser.parse_args()
+    if len(args) == 0:
         filepath = ''
         source = sys.stdin.read()
     else:
-        filepath = sys.argv[1]
+        filepath = args[0]
         with open(filepath) as source_file:
             source = source_file.read()
     #sys.stdout.write(analysis(source, filepath, Context()))
-    sys.stdout.write(analysis(source, filepath))
+    sys.stdout.write(analysis(source, filepath, show_types=options.show_types))
 
 
 if __name__ == '__main__':
