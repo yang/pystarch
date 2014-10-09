@@ -14,6 +14,10 @@ textarea {
     border: 1px solid black;
 }
 
+#output {
+    white-space: nowrap;
+}
+
 a:link {color: black;}
 a:visited {color: black;}
 a:hover {color: black;}
@@ -52,7 +56,7 @@ You can think of PyStarch as defining a sub-language of Python that lies halfway
 The box on the left below shows some sample Python code and the box on the right shows the corresponding PyStarch warnings. You can edit the code on the left and the box on the right will be automatically updated.
 </p>
 <form action="/html" method="POST">
-<textarea id="input" rows="20" cols="80" name="source" placeholder="Insert python source code here">
+<textarea id="input" rows="20" cols="80" name="source" spellcheck="false" placeholder="Insert python source code here">
 x = 1 + None
 
 def f(a, b):    # types of arguments are inferred by the way they are used
@@ -70,7 +74,7 @@ c = a + b if a is not None and b is not None else None    # no error here,
 d = a + b if a is not None or b is not None else None     # but here there is!
 
 </textarea>
-<textarea id="output" rows="20" cols="80" disabled placeholder="PyStarch output will be displayed here"></textarea>
+<textarea id="output" rows="20" cols="80" disabled spellcheck="false" placeholder="PyStarch output will be displayed here"></textarea>
 <br/>
 <!--
 <input type="submit" value="Submit" onclick="update(); return false;"/>
