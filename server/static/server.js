@@ -6,7 +6,7 @@ function update() {
     DIRTY = false; 
     WAITING = true;
     var code = $('#input').val();
-    $.post('/html', {source: code}).done(function(response) {
+    $.post('/process', {source: code}).done(function(response) {
         $('#output').val(response);
         WAITING = false;
     }).fail(function() {

@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, render_template
 from subprocess import Popen, PIPE
 
@@ -5,7 +6,9 @@ app = Flask(__name__)
 
 
 def analyze(source):
-    process = Popen(['python2', '../main.py'],
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    main_path = os.path.join(os.path.dirname(script_dir), 'main.py')
+    process = Popen(['python2', main_path],
                     stdin=PIPE, stdout=PIPE, stderr=PIPE)
     stdout, stderr = process.communicate(source)
     return (stdout, True) if process.returncode == 0 else (stderr, False)
@@ -28,7 +31,7 @@ def format_output(output):
         return result
 
 
-@app.route('/html', methods=['POST'])
+@app.route('/process', methods=['POST'])
 def html():
     source = request.form.get('source')
     output, success = analyze(source)
