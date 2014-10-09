@@ -17,6 +17,18 @@ textarea {
 <body>
 <form action="/html" method="POST">
 <textarea id="input" rows="20" cols="80" name="source" placeholder="Insert python source code here">
+x = 1 + None
+
+def f(a, b):
+    return len(a * b)
+
+f(2, 2)
+
+a = 1 if random() > 0.5 else None
+b = 1 if random() > 0.5 else None
+c = a + b if a is not None and b is not None else None
+d = a + b if a is not None or b is not None else None
+
 </textarea>
 <textarea id="output" rows="20" cols="80" disabled placeholder="PyStarch output will be displayed here"></textarea>
 <br/>

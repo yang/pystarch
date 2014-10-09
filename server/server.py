@@ -18,10 +18,10 @@ def format_output(output):
         line_text = line[line.index(' ')+1:]
         mapping[line_number] = (mapping[line_number] + '; ' + line_text
                                 if line_number in mapping else line_text)
-    result = ''
     if len(mapping) == 0:
-        return result
+        return 'No errors'
     else:
+        result = ''
         max_line = max(mapping.keys())
         for i in range(1, max_line + 1):
             result += mapping.get(i, '') + '\n'
