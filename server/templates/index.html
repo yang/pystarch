@@ -1,33 +1,73 @@
 <html>
 <head>
-<title>PyStarch</title>
+<title>PyStarch Interactive Demo</title>
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
 <script type="text/javascript" src="/static/server.js"></script>
 <style>
 textarea {
     resize: none;
     outline: none;
-    background-color: black;
+    background-color: rgba(0, 0, 0, 0.7);
     color: #DDD;
     font-family: courier, monospace;
     font-weight: bold;
+    border: 1px solid black;
+}
+
+a:link {color: black;}
+a:visited {color: black;}
+a:hover {color: black;}
+a:active {color: black;}
+
+body {
+    font-family: georgia;
+    background: url('/static/shanghai.jpg');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
+}
+form {
+    text-align: center;
+}
+h1 {
+    text-align: center;
+}
+p {
+    width: 1024px;
+    margin: 0 auto;
+    margin-top: 20px;
+    margin-bottom: 20px;
 }
 </style>
 </head>
 <body>
+<h1>PyStarch Interactive Demo</h1>
+<p>
+PyStarch is an <a href="https://github.com/clark800/pystarch">open source</a> lint-style command line tool for static type checking of Python programs. It also checks that programs conform to certain constraints that are intended to encourage a more functional programming style.
+</p>
+<p>
+You can think of PyStarch as defining a sub-language of Python that lies halfway between Python and Haskell, combining the simple syntax of Python with the safety and cleanliness of Haskell. Although PyStarch provides warnings to encourage you to use this sub-language (such as warning when variables are reassigned), you can choose to ignore any warnings you want since your code still runs in the standard Python interpreter.
+</p>
+<p>
+The box on the left below shows some sample Python code and the box on the right shows the corresponding PyStarch warnings. You can edit the code on the left and the box on the right will be automatically updated.
+</p>
 <form action="/html" method="POST">
 <textarea id="input" rows="20" cols="80" name="source" placeholder="Insert python source code here">
 x = 1 + None
 
-def f(a, b):
+def f(a, b):    # types of arguments are inferred by the way they are used
     return len(a * b)
 
 f(2, 2)
 
+def random():
+    return x        # dummy function, x has unknown value
+
+# Expressions have "maybe" type if they might be None
 a = 1 if random() > 0.5 else None
 b = 1 if random() > 0.5 else None
-c = a + b if a is not None and b is not None else None
-d = a + b if a is not None or b is not None else None
+c = a + b if a is not None and b is not None else None    # no error here,
+d = a + b if a is not None or b is not None else None     # but here there is!
 
 </textarea>
 <textarea id="output" rows="20" cols="80" disabled placeholder="PyStarch output will be displayed here"></textarea>
