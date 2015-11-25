@@ -80,10 +80,10 @@ def import_module(name, current_filepath, imported, warn):
         return Unknown(), current_filepath, False
 
     cache_filename = sha256(filepath + '~' + source).hexdigest()
-    cache_filepath = os.path.join(os.sep, 'var', 'cache', NAME,
+    cache_filepath = os.path.join(os.sep, os.environ['HOME'], '.pystarch',
                                   __version__, cache_filename)
 
-    if os.path.exists(cache_filepath):
+    if False and os.path.exists(cache_filepath):
         with open(cache_filepath, 'rb') as cache_file:
             return pickle.load(cache_file), filepath, is_package
     elif filepath in imported:
@@ -95,8 +95,11 @@ def import_module(name, current_filepath, imported, warn):
         imported.append(filepath)
         scope, _, _ = analyze(source, filepath, imported=imported)
         module = Instance('object', scope)
-        with open(cache_filepath, 'wb') as cache_file:
-            pickle.dump(module, cache_file, pickle.HIGHEST_PROTOCOL)
+        #try: os.makedirs(os.path.dirname(cache_filepath))
+        #except: pass
+        #with open(cache_filepath, 'wb') as cache_file:
+        #    import ipdb; ipdb.set_trace()
+        #    pickle.dump(module, cache_file, pickle.HIGHEST_PROTOCOL)
         return module, filepath, is_package
 
 
@@ -193,7 +196,7 @@ def analyze(source, filepath=None, context=None, imported=[]):
 def analysis(source, filepath=None, context=None, show_types=False):
     scope, warnings, _ = analyze(source, filepath, context)
     warning_output = str(warnings)
-    if show_types: 
+    if show_types:
         scope_output = str(scope)
         separator = '\n' if warning_output and scope_output else ''
         return scope_output + separator + warning_output
